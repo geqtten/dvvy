@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base href="/dvvy/">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="A new Flutter project.">
+
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="divvy">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>divvy</title>
+  <link rel="manifest" href="manifest.json">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+  <script>
+
+    const firebaseConfig = {
+      apiKey: 'AIzaSyBoQ6lQi6-xPF2mv8lMDfhqJ4SLuRTLmjY',
+      appId: '1:907673788834:web:e431f6db82b3c30c09d2fb',
+      messagingSenderId: '907673788834',
+      projectId: 'dvvy-eb34b',
+      authDomain: 'dvvy-eb34b.firebaseapp.com',
+      storageBucket: 'dvvy-eb34b.firebasestorage.app',
+    };
+    
+    firebase.initializeApp(firebaseConfig);
+  </script>
+
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>
