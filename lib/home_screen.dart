@@ -8,36 +8,54 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _counter = 0;
+  final user = "dd";
 
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
+  void _createGroup() async {
+    TextEditingController nameGroupController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog.adaptive(
+          title: const Text('Создание группы', style: TextStyle(fontSize: 18)),
+          content: TextFormField(
+            controller: nameGroupController,
+            decoration: InputDecoration(
+              label: Text('Введите название', style: TextStyle(fontSize: 16)),
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            Row(
+              children: [
+                TextButton(
+                  child: const Text('Отменить'),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                SizedBox(width: 60),
+                TextButton(child: const Text('Создать'), onPressed: () {}),
+              ],
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
+      backgroundColor: Colors.white,
+      body: Center(child: Text('Пока не создано групп')),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _createGroup,
+        label: Row(
+          children: [
+            Text('Создать', style: TextStyle(color: Colors.white)),
+            SizedBox(width: 15),
+            Icon(Icons.add, color: Colors.white),
           ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
+        backgroundColor: Colors.blueGrey[200],
       ),
     );
   }
