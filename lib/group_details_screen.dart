@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:divvy/core/theme/constants/color.dart';
+import 'package:divvy/core/services/firebase_service.dart';
 
 class GroupDetailsScreen extends StatefulWidget {
   final String groupId;
@@ -21,6 +22,8 @@ class GroupDetailsScreen extends StatefulWidget {
 }
 
 class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
+  final FirebaseService _firebaseService = FirebaseService();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -49,11 +52,13 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
           ),
         ),
       ),
-      body: Column(
+
+      body: ListView(
+        padding: const EdgeInsets.only(bottom: 80),
         children: [
           _buildGroupInfo(),
           const SizedBox(height: 16),
-          Expanded(child: _buildExpensesList()),
+          _buildExpensesList(),
         ],
       ),
       floatingActionButton: Container(
@@ -71,9 +76,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
           ],
         ),
         child: FloatingActionButton.extended(
-          onPressed: () {
-            _addExpense();
-          },
+          onPressed: _addExpense,
           backgroundColor: Colors.transparent,
           hoverElevation: 0,
           elevation: 0,
@@ -96,78 +99,88 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
   }
 
   Widget _buildGroupInfo() {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: _firebaseService.getMembers(widget.groupId),
+      builder: (context, snapshot) {
+        final memberCount = snapshot.data?.length ?? 0;
+
+        return Container(
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Column(
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Общая сумма',
-                    style: TextStyle(color: Color(0xFF9E9E9E), fontSize: 14),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Общая сумма',
+                        style: TextStyle(
+                          color: Color(0xFF9E9E9E),
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '0 ₽',
+                        style: TextStyle(
+                          color: primaryColor,
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '0 ₽',
-                    style: TextStyle(
-                      color: primaryColor,
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [primaryColor, Color(0xFF8B7FFF)],
+                      ),
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: const Icon(
+                      Icons.account_balance_wallet,
+                      color: Colors.white,
+                      size: 32,
                     ),
                   ),
                 ],
               ),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [primaryColor, Color(0xFF8B7FFF)],
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildStatCard(
+                      'Участники',
+                      '$memberCount',
+                      Icons.people,
+                      onTap: _showMembersDialog,
+                    ),
                   ),
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: const Icon(
-                  Icons.account_balance_wallet,
-                  color: Colors.white,
-                  size: 32,
-                ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildStatCard('Расходы', '0', Icons.receipt_long),
+                  ),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatCard(
-                  'Участники',
-                  '0',
-                  Icons.people,
-                  onTap: () => _inviteToTelegram(),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildStatCard('Расходы', '0', Icons.receipt_long),
-              ),
-            ],
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -219,6 +232,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
+      constraints: const BoxConstraints(minHeight: 300),
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(20),
@@ -247,7 +261,8 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          Expanded(
+          SizedBox(
+            height: 200,
             child: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -276,6 +291,85 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
     );
   }
 
+  void _showMembersDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Участники',
+              style: TextStyle(
+                color: Color(0xFF2D3142),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.person_add, color: primaryColor),
+              onPressed: () {
+                Navigator.pop(context);
+                _inviteToTelegram();
+              },
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: StreamBuilder<List<Map<String, dynamic>>>(
+            stream: _firebaseService.getMembers(widget.groupId),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              final members = snapshot.data ?? [];
+
+              if (members.isEmpty) {
+                return const Center(child: Text('Нет участников'));
+              }
+
+              return ListView.builder(
+                shrinkWrap: true,
+                itemCount: members.length,
+                itemBuilder: (context, index) {
+                  final member = members[index];
+                  return ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: primaryColor.withOpacity(0.2),
+                      child: Text(
+                        member['firstName'][0].toUpperCase(),
+                        style: const TextStyle(color: primaryColor),
+                      ),
+                    ),
+                    title: Text(
+                      member['firstName'] ?? 'Без имени',
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    subtitle: member['username'] != null
+                        ? Text('@${member['username']}')
+                        : null,
+                    trailing: member['isOwner']
+                        ? const Icon(Icons.star, color: Colors.amber, size: 20)
+                        : null,
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Закрыть'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _inviteToTelegram() async {
     const functionUrl =
         "https://eur3-dvvy-eb34b.cloudfunctions.net/getTelegramInviteLink";
@@ -287,17 +381,25 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
         final link = jsonDecode(response.body)['link'];
         final uri = Uri.parse(link);
 
-        if (!await launchUrl(uri)) {
+        if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
           throw "Не удалось открыть Telegram";
         }
       } else {
-        throw "Ошибка функции";
+        throw "Ошибка функции: ${response.statusCode}";
       }
     } catch (e) {
-      print(e);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Ошибка при приглашении")));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Ошибка при приглашении: $e"),
+            backgroundColor: accentColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
     }
   }
 
