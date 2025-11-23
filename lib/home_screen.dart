@@ -1,4 +1,5 @@
 import 'package:divvy/core/theme/constants/color.dart';
+import 'package:divvy/group_details_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:divvy/core/services/firebase_service.dart';
 
@@ -58,6 +59,7 @@ class _HomeScreenState extends State<HomeScreen> {
           onPressed: () => _createGroup(context),
           backgroundColor: Colors.transparent,
           elevation: 0,
+          hoverElevation: 0,
           label: const Row(
             children: [
               Text(
@@ -119,7 +121,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: Color(0xFF2D3142),
               ),
             ),
-            trailing: PopupMenuButton<String>(
+            trailing: PopupMenuButton(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(15),
               ),
@@ -154,7 +156,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => GroupDetailsScreen(
+                    groupId: group['id'],
+                    groupName: group['name'] ?? '',
+                  ),
+                ),
+              );
+            },
           ),
         );
       },
@@ -205,7 +217,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _createGroup(BuildContext context) {
     final nameController = TextEditingController();
-    // Сохраняем ScaffoldMessenger до закрытия диалога
+
     final scaffoldMessenger = ScaffoldMessenger.of(context);
 
     showDialog(
@@ -289,7 +301,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     try {
                       await _firebaseService.createGroup(groupName);
-                      // Используем сохраненный scaffoldMessenger
+
                       scaffoldMessenger.showSnackBar(
                         SnackBar(
                           content: Text('Группа "$groupName" создана'),
@@ -337,11 +349,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _editGroup(String groupId, String currentName) async {
     final nameController = TextEditingController(text: currentName);
-    // Сохраняем ScaffoldMessenger до закрытия диалога
     final scaffoldMessenger = ScaffoldMessenger.of(context);
 
     final result =
-        await showDialog<String>(
+        await showDialog(
           context: context,
           builder: (BuildContext dialogContext) {
             final formKey = GlobalKey<FormState>();
@@ -451,7 +462,6 @@ class _HomeScreenState extends State<HomeScreen> {
     if (result != null && result != currentName) {
       try {
         await _firebaseService.updateGroup(groupId, result);
-        // Используем сохраненный scaffoldMessenger
         scaffoldMessenger.showSnackBar(
           SnackBar(
             content: Text('Группа "$result" обновлена'),
@@ -478,7 +488,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _deleteGroup(String groupId) async {
-    // Сохраняем ScaffoldMessenger до закрытия диалога
     final scaffoldMessenger = ScaffoldMessenger.of(context);
 
     final confirm = await showDialog<bool>(
@@ -522,7 +531,6 @@ class _HomeScreenState extends State<HomeScreen> {
     if (confirm == true) {
       try {
         await _firebaseService.deleteGroup(groupId);
-        // Используем сохраненный scaffoldMessenger
         scaffoldMessenger.showSnackBar(
           SnackBar(
             content: const Text('Группа удалена'),
