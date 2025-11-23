@@ -7,25 +7,14 @@ class FirebaseService {
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final String _groupsCollection = 'groups';
+  final String _membersCollection = 'members';
 
-  String? _telegramUserId;
-
-  void setTelegramUserId(String userId) {
-    _telegramUserId = userId;
-    print('Telegram User ID set: $userId');
-  }
-
-  Stream<List<Map<String, dynamic>>> getGroups() {
+  Stream<List<Map<String, dynamic>>> getGroups(String userId) {
     try {
-      var query = _firestore
+      return _firestore
           .collection(_groupsCollection)
-          .orderBy('createdAt', descending: true);
-
-      if (_telegramUserId != null) {
-        query = query.where('userId', isEqualTo: _telegramUserId);
-      }
-
-      return query
+          .where('userId', isEqualTo: userId)
+          .orderBy('createdAt', descending: true)
           .snapshots()
           .map((snapshot) {
             return snapshot.docs.map((doc) {
@@ -47,14 +36,31 @@ class FirebaseService {
     }
   }
 
-  Future<void> createGroup(String name) async {
+  Future<String> createGroup({
+    required String name,
+    required String userId,
+    String? username,
+    required String firstName,
+    String? lastName,
+  }) async {
     try {
-      await _firestore.collection(_groupsCollection).add({
+      final docRef = await _firestore.collection(_groupsCollection).add({
         'name': name,
         'createdAt': FieldValue.serverTimestamp(),
-        'userId': _telegramUserId,
+        'userId': userId,
       });
-      print('Group created successfully: $name for user: $_telegramUserId');
+
+      await addMember(
+        groupId: docRef.id,
+        telegramUserId: userId,
+        username: username,
+        firstName: firstName,
+        lastName: lastName,
+        isOwner: true,
+      );
+
+      print('Group created successfully: $name with ID: ${docRef.id}');
+      return docRef.id;
     } catch (e) {
       print('Error creating group: $e');
       throw Exception('Ошибка при создании группы: $e');
@@ -63,6 +69,16 @@ class FirebaseService {
 
   Future<void> deleteGroup(String groupId) async {
     try {
+      final membersSnapshot = await _firestore
+          .collection(_groupsCollection)
+          .doc(groupId)
+          .collection(_membersCollection)
+          .get();
+
+      for (var doc in membersSnapshot.docs) {
+        await doc.reference.delete();
+      }
+
       await _firestore.collection(_groupsCollection).doc(groupId).delete();
       print('Group deleted successfully: $groupId');
     } catch (e) {
@@ -80,6 +96,111 @@ class FirebaseService {
     } catch (e) {
       print('Error updating group: $e');
       throw Exception('Ошибка при обновлении группы: $e');
+    }
+  }
+
+  Future<void> addMember({
+    required String groupId,
+    required String telegramUserId,
+    String? username,
+    required String firstName,
+    String? lastName,
+    bool isOwner = false,
+  }) async {
+    try {
+      await _firestore
+          .collection(_groupsCollection)
+          .doc(groupId)
+          .collection(_membersCollection)
+          .doc(telegramUserId)
+          .set({
+            'telegramUserId': telegramUserId,
+            'username': username,
+            'firstName': firstName,
+            'lastName': lastName,
+            'isOwner': isOwner,
+            'joinedAt': FieldValue.serverTimestamp(),
+          });
+      print('Member added: $firstName (@$username)');
+    } catch (e) {
+      print('Error adding member: $e');
+      throw Exception('Ошибка при добавлении участника: $e');
+    }
+  }
+
+  Stream<List<Map<String, dynamic>>> getMembers(String groupId) {
+    try {
+      return _firestore
+          .collection(_groupsCollection)
+          .doc(groupId)
+          .collection(_membersCollection)
+          .orderBy('joinedAt')
+          .snapshots()
+          .map((snapshot) {
+            return snapshot.docs.map((doc) {
+              final data = doc.data();
+              return {
+                'id': doc.id,
+                'telegramUserId': data['telegramUserId'] ?? '',
+                'username': data['username'],
+                'firstName': data['firstName'] ?? '',
+                'lastName': data['lastName'],
+                'isOwner': data['isOwner'] ?? false,
+                'joinedAt': data['joinedAt'],
+              };
+            }).toList();
+          })
+          .handleError((error) {
+            print('Error getting members: $error');
+            return <Map<String, dynamic>>[];
+          });
+    } catch (e) {
+      print('Error in getMembers: $e');
+      return Stream.value(<Map<String, dynamic>>[]);
+    }
+  }
+
+  Future<void> removeMember(String groupId, String telegramUserId) async {
+    try {
+      await _firestore
+          .collection(_groupsCollection)
+          .doc(groupId)
+          .collection(_membersCollection)
+          .doc(telegramUserId)
+          .delete();
+      print('Member removed: $telegramUserId');
+    } catch (e) {
+      print('Error removing member: $e');
+      throw Exception('Ошибка при удалении участника: $e');
+    }
+  }
+
+  Future<bool> isMember(String groupId, String telegramUserId) async {
+    try {
+      final doc = await _firestore
+          .collection(_groupsCollection)
+          .doc(groupId)
+          .collection(_membersCollection)
+          .doc(telegramUserId)
+          .get();
+      return doc.exists;
+    } catch (e) {
+      print('Error checking membership: $e');
+      return false;
+    }
+  }
+
+  Future<int> getMemberCount(String groupId) async {
+    try {
+      final snapshot = await _firestore
+          .collection(_groupsCollection)
+          .doc(groupId)
+          .collection(_membersCollection)
+          .get();
+      return snapshot.docs.length;
+    } catch (e) {
+      print('Error getting member count: $e');
+      return 0;
     }
   }
 }

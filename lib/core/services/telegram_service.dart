@@ -15,12 +15,12 @@ class TelegramService {
           final webApp = telegram['WebApp'];
 
           webApp.callMethod('expand', []);
-
           _initData = _parseInitData();
 
           print('Telegram WebApp initialized');
           print('User ID: ${getUserId()}');
-          print('Username: ${getUsername()}');
+          print('Username: @${getUsername()}');
+          print('Full name: ${getFullName()}');
         }
       } else {
         print('Telegram WebApp API not available (running in browser)');
@@ -58,14 +58,22 @@ class TelegramService {
     return _initData?['id']?.toString();
   }
 
+  String? getFirstName() {
+    return _initData?['first_name'];
+  }
+
+  String? getLastName() {
+    return _initData?['last_name'];
+  }
+
   String? getUsername() {
+    return _initData?['username'];
+  }
+
+  String getFullName() {
     final firstName = _initData?['first_name'] ?? '';
     final lastName = _initData?['last_name'] ?? '';
     return '$firstName $lastName'.trim();
-  }
-
-  String? getTelegramUsername() {
-    return _initData?['username'];
   }
 
   bool isRunningInTelegram() {
@@ -94,5 +102,9 @@ class TelegramService {
     } catch (e) {
       print('Error showing main button: $e');
     }
+  }
+
+  Future<List<Map<String, dynamic>>> getContacts() async {
+    return [];
   }
 }

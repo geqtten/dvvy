@@ -1,8 +1,9 @@
-import 'package:divvy/app.dart';
-import 'package:divvy/core/services/firebase_service.dart';
-import 'package:divvy/core/services/telegram_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+
+import 'package:divvy/app.dart';
+
+import 'package:divvy/core/services/telegram_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,13 +25,14 @@ void main() async {
   final telegramService = TelegramService();
   telegramService.initialize();
 
-  final userId = telegramService.getUserId();
-  if (userId != null) {
-    FirebaseService().setTelegramUserId(userId);
+  if (telegramService.isRunningInTelegram()) {
+    print('Running in Telegram');
+    print(
+      'User: ${telegramService.getFullName()} (@${telegramService.getUsername()})',
+    );
   } else {
-    print('Running in browser mode - using test user ID');
-    FirebaseService().setTelegramUserId('test_user_123');
+    print('Running in browser mode - test user will be used');
   }
 
-  runApp(const DvvyApp());
+  runApp(const MaterialApp(home: DvvyApp()));
 }

@@ -1,3 +1,4 @@
+import 'package:divvy/core/services/telegram_service.dart';
 import 'package:divvy/core/theme/constants/color.dart';
 import 'package:divvy/group_details_screen.dart';
 import 'package:flutter/material.dart';
@@ -13,12 +14,16 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final FirebaseService _firebaseService = FirebaseService();
 
+  String _getUserId() {
+    return TelegramService().getUserId() ?? 'test_user_123';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: backgroundColor,
       body: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: _firebaseService.getGroups(),
+        stream: _firebaseService.getGroups(_getUserId()),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
@@ -56,7 +61,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         child: FloatingActionButton.extended(
-          onPressed: () => _createGroup(context),
+          onPressed: _showCreateGroupDialog,
           backgroundColor: Colors.transparent,
           elevation: 0,
           hoverElevation: 0,
@@ -215,9 +220,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _createGroup(BuildContext context) {
+  void _showCreateGroupDialog() {
     final nameController = TextEditingController();
-
     final scaffoldMessenger = ScaffoldMessenger.of(context);
 
     showDialog(
@@ -300,7 +304,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     Navigator.of(dialogContext).pop();
 
                     try {
-                      await _firebaseService.createGroup(groupName);
+                      final telegram = TelegramService();
+
+                      await _firebaseService.createGroup(
+                        name: groupName,
+                        userId: telegram.getUserId() ?? 'test_user_123',
+                        username: telegram.getUsername(),
+                        firstName: telegram.getFirstName() ?? 'Test',
+                        lastName: telegram.getLastName(),
+                      );
 
                       scaffoldMessenger.showSnackBar(
                         SnackBar(
