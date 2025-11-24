@@ -50,13 +50,11 @@ class FirebaseService {
         'userId': userId,
       });
 
-      await addMember(
+      await addUserToGroup(
         groupId: docRef.id,
-        telegramUserId: userId,
+        userId: userId,
         username: username,
         firstName: firstName,
-        lastName: lastName,
-        isOwner: true,
       );
 
       print('Group created successfully: $name with ID: ${docRef.id}');
@@ -99,32 +97,27 @@ class FirebaseService {
     }
   }
 
-  Future<void> addMember({
+  Future<void> addUserToGroup({
     required String groupId,
-    required String telegramUserId,
-    String? username,
+    required String userId,
     required String firstName,
-    String? lastName,
-    bool isOwner = false,
+    required String? username,
   }) async {
-    try {
-      await _firestore
-          .collection(_groupsCollection)
-          .doc(groupId)
-          .collection(_membersCollection)
-          .doc(telegramUserId)
-          .set({
-            'telegramUserId': telegramUserId,
-            'username': username,
-            'firstName': firstName,
-            'lastName': lastName,
-            'isOwner': isOwner,
-            'joinedAt': FieldValue.serverTimestamp(),
-          });
-      print('Member added: $firstName (@$username)');
-    } catch (e) {
-      print('Error adding member: $e');
-      throw Exception('Ошибка при добавлении участника: $e');
+    final groupRef = FirebaseFirestore.instance
+        .collection("groups")
+        .doc(groupId)
+        .collection("members")
+        .doc(userId);
+
+    final exists = await groupRef.get();
+
+    if (!exists.exists) {
+      await groupRef.set({
+        'firstName': firstName,
+        'username': username,
+        'isOwner': false,
+        'joinedAt': DateTime.now().toIso8601String(),
+      });
     }
   }
 
