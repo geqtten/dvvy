@@ -7,7 +7,7 @@ class FirebaseService {
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final String _groupsCollection = 'groups';
-  final String _membersCollection = 'members';
+  final String _expensesCollection = 'expenses';
 
   Stream<List<Map<String, dynamic>>> getGroups(String userId) {
     try {
@@ -50,13 +50,6 @@ class FirebaseService {
         'userId': userId,
       });
 
-      await addUserToGroup(
-        groupId: docRef.id,
-        userId: userId,
-        username: username,
-        firstName: firstName,
-      );
-
       print('Group created successfully: $name with ID: ${docRef.id}');
       return docRef.id;
     } catch (e) {
@@ -67,15 +60,7 @@ class FirebaseService {
 
   Future<void> deleteGroup(String groupId) async {
     try {
-      final membersSnapshot = await _firestore
-          .collection(_groupsCollection)
-          .doc(groupId)
-          .collection(_membersCollection)
-          .get();
-
-      for (var doc in membersSnapshot.docs) {
-        await doc.reference.delete();
-      }
+      _firestore.collection(_groupsCollection).doc(groupId);
 
       await _firestore.collection(_groupsCollection).doc(groupId).delete();
       print('Group deleted successfully: $groupId');
@@ -97,103 +82,85 @@ class FirebaseService {
     }
   }
 
-  Future<void> addUserToGroup({
-    required String groupId,
-    required String userId,
-    required String firstName,
-    required String? username,
-  }) async {
-    final groupRef = FirebaseFirestore.instance
-        .collection("groups")
-        .doc(groupId)
-        .collection("members")
-        .doc(userId);
-
-    final exists = await groupRef.get();
-
-    if (!exists.exists) {
-      await groupRef.set({
-        'firstName': firstName,
-        'username': username,
-        'isOwner': false,
-        'joinedAt': DateTime.now().toIso8601String(),
-      });
-    }
-  }
-
-  Stream<List<Map<String, dynamic>>> getMembers(String groupId) {
+  Stream<List<Map<String, dynamic>>> getExpenses(String id) {
     try {
       return _firestore
-          .collection(_groupsCollection)
-          .doc(groupId)
-          .collection(_membersCollection)
-          .orderBy('joinedAt')
+          .collection(_expensesCollection)
+          .where('id', isEqualTo: id)
           .snapshots()
           .map((snapshot) {
-            return snapshot.docs.map((doc) {
-              final data = doc.data();
+            final expenses = snapshot.docs.map((doc) {
               return {
                 'id': doc.id,
-                'telegramUserId': data['telegramUserId'] ?? '',
-                'username': data['username'],
-                'firstName': data['firstName'] ?? '',
-                'lastName': data['lastName'],
-                'isOwner': data['isOwner'] ?? false,
-                'joinedAt': data['joinedAt'],
+                'name': doc.data()['name'] ?? '',
+                'amount': doc.data()['amount'] ?? '0',
+                'createdAt': doc.data()['createdAt'],
               };
             }).toList();
+            expenses.sort((a, b) {
+              final aTime = a['createdAt'] as Timestamp?;
+              final bTime = b['createdAt'] as Timestamp?;
+              if (aTime == null && bTime == null) return 0;
+              if (aTime == null) return 1;
+              if (bTime == null) return -1;
+              return bTime.compareTo(aTime);
+            });
+            return expenses;
           })
           .handleError((error) {
-            print('Error getting members: $error');
+            print('Error getting expenses: $error');
             return <Map<String, dynamic>>[];
           });
     } catch (e) {
-      print('Error in getMembers: $e');
+      print('Error in getExpenses: $e');
       return Stream.value(<Map<String, dynamic>>[]);
     }
   }
 
-  Future<void> removeMember(String groupId, String telegramUserId) async {
+  Future<String> createExpenses({
+    required String name,
+    required String id,
+    required String expense,
+    String? summary,
+    String? amount,
+  }) async {
     try {
-      await _firestore
-          .collection(_groupsCollection)
-          .doc(groupId)
-          .collection(_membersCollection)
-          .doc(telegramUserId)
-          .delete();
-      print('Member removed: $telegramUserId');
+      final docRef = await _firestore.collection(_expensesCollection).add({
+        'name': name,
+        'amount': amount ?? '0',
+        'createdAt': FieldValue.serverTimestamp(),
+        'id': id,
+      });
+
+      print('Expense created successfully: $name with ID: ${docRef.id}');
+      return docRef.id;
     } catch (e) {
-      print('Error removing member: $e');
-      throw Exception('Ошибка при удалении участника: $e');
+      print('Error creating expense: $e');
+      throw Exception('Ошибка при добавлени расхода: $e');
     }
   }
 
-  Future<bool> isMember(String groupId, String telegramUserId) async {
+  Future<void> deleteExpenses(String id) async {
     try {
-      final doc = await _firestore
-          .collection(_groupsCollection)
-          .doc(groupId)
-          .collection(_membersCollection)
-          .doc(telegramUserId)
-          .get();
-      return doc.exists;
+      _firestore.collection(_expensesCollection).doc(id);
+
+      await _firestore.collection(_expensesCollection).doc(id).delete();
+      print('Expense deleted successfully: $id');
     } catch (e) {
-      print('Error checking membership: $e');
-      return false;
+      print('Error deleting expense: $e');
+      throw Exception('Ошибка при удалении расхода: $e');
     }
   }
 
-  Future<int> getMemberCount(String groupId) async {
+  Future<void> updateExpenses(String id, String newName) async {
     try {
-      final snapshot = await _firestore
-          .collection(_groupsCollection)
-          .doc(groupId)
-          .collection(_membersCollection)
-          .get();
-      return snapshot.docs.length;
+      await _firestore.collection(_expensesCollection).doc(id).update({
+        'name': newName,
+      });
+      print('Expense updated successfully: $id');
     } catch (e) {
-      print('Error getting member count: $e');
-      return 0;
+      print('Error updating expense: $e');
+      throw Exception('Ошибка при обновлении расхода: $e');
     }
   }
 }

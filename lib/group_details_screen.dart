@@ -5,16 +5,21 @@ import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:divvy/core/theme/constants/color.dart';
+import 'package:divvy/core/theme/custom_text_form_field.dart';
 import 'package:divvy/core/services/firebase_service.dart';
 
 class GroupDetailsScreen extends StatefulWidget {
   final String groupId;
   final String groupName;
+  final String id;
+  final String expensesName;
 
   const GroupDetailsScreen({
     super.key,
     required this.groupId,
     required this.groupName,
+    required this.id,
+    required this.expensesName,
   });
 
   @override
@@ -100,85 +105,107 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
 
   Widget _buildGroupInfo() {
     return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: _firebaseService.getMembers(widget.groupId),
+      stream: _firebaseService.getGroups(widget.groupId),
       builder: (context, snapshot) {
         final memberCount = snapshot.data?.length ?? 0;
 
-        return Container(
-          margin: const EdgeInsets.all(16),
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: cardColor,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+        return StreamBuilder<List<Map<String, dynamic>>>(
+          stream: _firebaseService.getExpenses(widget.id),
+          builder: (context, expensesSnapshot) {
+            double totalAmount = 0;
+            int expensesCount = 0;
+
+            if (expensesSnapshot.hasData) {
+              final expenses = expensesSnapshot.data ?? [];
+              expensesCount = expenses.length;
+              for (var expense in expenses) {
+                final amountStr = expense['amount']?.toString() ?? '0';
+                final amount = double.tryParse(amountStr) ?? 0;
+                totalAmount += amount;
+              }
+            }
+
+            return Container(
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Column(
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Общая сумма',
-                        style: TextStyle(
-                          color: Color(0xFF9E9E9E),
-                          fontSize: 14,
-                        ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Общая сумма',
+                            style: TextStyle(
+                              color: Color(0xFF9E9E9E),
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '${totalAmount.toStringAsFixed(0)} ₽',
+                            style: TextStyle(
+                              color: primaryColor,
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '0 ₽',
-                        style: TextStyle(
-                          color: primaryColor,
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [primaryColor, Color(0xFF8B7FFF)],
+                          ),
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: const Icon(
+                          Icons.account_balance_wallet,
+                          color: Colors.white,
+                          size: 32,
                         ),
                       ),
                     ],
                   ),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [primaryColor, Color(0xFF8B7FFF)],
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildStatCard(
+                          'Участники',
+                          '$memberCount',
+                          Icons.people,
+                          onTap: _showMembersDialog,
+                        ),
                       ),
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                    child: const Icon(
-                      Icons.account_balance_wallet,
-                      color: Colors.white,
-                      size: 32,
-                    ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildStatCard(
+                          'Расходы',
+                          '$expensesCount',
+                          Icons.receipt_long,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildStatCard(
-                      'Участники',
-                      '$memberCount',
-                      Icons.people,
-                      onTap: _showMembersDialog,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildStatCard('Расходы', '0', Icons.receipt_long),
-                  ),
-                ],
-              ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -245,6 +272,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
         ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           const Row(
             children: [
@@ -261,30 +289,121 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          SizedBox(
-            height: 200,
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.receipt_long_outlined,
-                    size: 64,
-                    color: primaryColor.withOpacity(0.3),
+          StreamBuilder<List<Map<String, dynamic>>>(
+            stream: _firebaseService.getExpenses(widget.id),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const SizedBox(
+                  height: 200,
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+
+              if (snapshot.hasError) {
+                return SizedBox(
+                  height: 200,
+                  child: Center(
+                    child: Text(
+                      'Ошибка загрузки расходов',
+                      style: TextStyle(color: accentColor),
+                    ),
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Нет расходов',
-                    style: TextStyle(color: Color(0xFF9E9E9E), fontSize: 16),
+                );
+              }
+
+              final expenses = snapshot.data ?? [];
+
+              if (expenses.isEmpty) {
+                return SizedBox(
+                  height: 200,
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.receipt_long_outlined,
+                          size: 64,
+                          color: primaryColor.withOpacity(0.3),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Нет расходов',
+                          style: TextStyle(
+                            color: Color(0xFF9E9E9E),
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Добавьте первый расход',
+                          style: TextStyle(
+                            color: Color(0xFFBDBDBD),
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Добавьте первый расход',
-                    style: TextStyle(color: Color(0xFFBDBDBD), fontSize: 14),
-                  ),
-                ],
-              ),
-            ),
+                );
+              }
+
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: expenses.map((expense) {
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: backgroundColor,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [primaryColor, Color(0xFF8B7FFF)],
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.receipt,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                expense['name'] ?? 'Без названия',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF2D3142),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${expense['amount'] ?? '0'} ₽',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: primaryColor,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              );
+            },
           ),
         ],
       ),
@@ -319,7 +438,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
         content: SizedBox(
           width: double.maxFinite,
           child: StreamBuilder<List<Map<String, dynamic>>>(
-            stream: _firebaseService.getMembers(widget.groupId),
+            stream: _firebaseService.getGroups(widget.groupId),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
@@ -404,13 +523,145 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
   }
 
   void _addExpense() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Добавление расхода - скоро будет реализовано'),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: primaryColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
+    final nameController = TextEditingController();
+    final expensesController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        final formKey = GlobalKey<FormState>();
+
+        return AlertDialog(
+          backgroundColor: cardColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(25),
+          ),
+          title: const Text(
+            'Добавить расход',
+            style: TextStyle(
+              color: Color(0xFF2D3142),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CustomTextFormField(
+                  controller: nameController,
+                  labelText: 'Название расхода',
+                  hintText: 'Введите название',
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Пожалуйста, введите название';
+                    }
+                    return null;
+                  },
+                  autofocus: true,
+                  textCapitalization: TextCapitalization.sentences,
+                ),
+                const SizedBox(height: 16),
+                CustomTextFormField(
+                  controller: expensesController,
+                  labelText: 'Сумма',
+                  hintText: 'Введите сумму',
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Пожалуйста, введите сумму';
+                    }
+                    final amount = double.tryParse(value.trim());
+                    if (amount == null || amount <= 0) {
+                      return 'Пожалуйста, введите корректную сумму';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+              child: const Text(
+                'Отмена',
+                style: TextStyle(color: Color(0xFF9E9E9E)),
+              ),
+            ),
+            Container(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [primaryColor, Color(0xFF8B7FFF)],
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: ElevatedButton(
+                onPressed: () async {
+                  if (formKey.currentState!.validate()) {
+                    final expensesName = nameController.text.trim();
+                    final amount = expensesController.text.trim();
+                    Navigator.of(dialogContext).pop();
+
+                    try {
+                      await _firebaseService.createExpenses(
+                        name: expensesName,
+                        id: widget.id,
+                        expense: widget.expensesName,
+                        amount: amount,
+                      );
+
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Расход "$expensesName" на сумму $amount ₽ добавлен',
+                            ),
+                            behavior: SnackBarBehavior.floating,
+                            backgroundColor: secondaryColor,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Ошибка: $e'),
+                            backgroundColor: accentColor,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        );
+                      }
+                    }
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'Добавить',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    ).then((_) {
+      nameController.dispose();
+      expensesController.dispose();
+    });
   }
 }
