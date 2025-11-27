@@ -1,13 +1,11 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:divvy/core/theme/constants/color.dart';
 import 'package:divvy/core/theme/custom_text_form_field.dart';
 import 'package:divvy/core/services/firebase_service.dart';
 import 'package:divvy/core/services/telegram_service.dart';
+import 'package:divvy/core/services/bot_telegram_service.dart';
 
 class GroupDetailsScreen extends StatefulWidget {
   final String groupId;
@@ -30,6 +28,10 @@ class GroupDetailsScreen extends StatefulWidget {
 class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
   final FirebaseService _firebaseService = FirebaseService();
   final TelegramService _telegramService = TelegramService();
+  final TelegramBotService _botService = TelegramBotService();
+  late final AppLinkSharing _linkSharing = AppLinkSharing(
+    botService: _botService,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -581,16 +583,36 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
   }
 
   Future<void> _inviteToTelegram() async {
-    const functionUrl =
-        "https://eur3-dvvy-eb34b.cloudfunctions.net/getTelegramInviteLink";
-
     try {
-      final response = await http.get(Uri.parse(functionUrl));
+      final link = await _botService.buildInviteLink(groupId: widget.groupId);
 
-      if (response.statusCode == 200) {
-        final link = jsonDecode(response.body)['link'];
-        final message =
-            'Присоединяйся к группе "${widget.groupName}" и следи за расходами!';
+      if (link == null) {
+        throw "Не удалось сформировать ссылку приглашения";
+      }
+
+      final message =
+          'Присоединяйся к группе "${widget.groupName}" и следи за расходами!';
+
+      final linkSent = await _linkSharing.sendLinkWithButton(
+        link: link,
+        buttonText: 'Открыть группу',
+        message: message,
+      );
+
+      if (linkSent) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Ссылка отправлена в Telegram'),
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: secondaryColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          );
+        }
+      } else {
         final shareUrl =
             'https://t.me/share/url?url=${Uri.encodeComponent(link)}&text=${Uri.encodeComponent(message)}';
 
@@ -604,8 +626,6 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
             throw "Не удалось открыть Telegram";
           }
         }
-      } else {
-        throw "Ошибка функции: ${response.statusCode}";
       }
     } catch (e) {
       if (mounted) {
