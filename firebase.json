@@ -14,7 +14,7 @@
   "firestore": {
     "database": "(default)",
     "location": "eur3",
-    "rules": "y",
+    "rules": "firestore.rules",
     "indexes": "y"
   }
 }

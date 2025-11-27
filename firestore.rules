@@ -1,0 +1,15 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Правила для групп
+    match /groups/{groupId} {
+      allow read, write: if true; // Для тестирования - разрешить все
+    }
+    
+    // Правила для расходов
+    match /expenses/{expenseId} {
+      allow read, write: if true; // Для тестирования - разрешить все
+    }
+  }
+}
+
