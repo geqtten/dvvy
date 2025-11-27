@@ -6,6 +6,7 @@ class TelegramService {
   TelegramService._internal();
 
   Map<String, dynamic>? _initData;
+  String? _startParam;
 
   void initialize() {
     try {
@@ -15,7 +16,7 @@ class TelegramService {
           final webApp = telegram['WebApp'];
 
           webApp.callMethod('expand', []);
-          _initData = _parseInitData();
+          _initData = _parseInitData(webApp);
 
           print('Telegram WebApp initialized');
           print('User ID: ${getUserId()}');
@@ -30,13 +31,14 @@ class TelegramService {
     }
   }
 
-  Map<String, dynamic> _parseInitData() {
+  Map<String, dynamic> _parseInitData(dynamic webApp) {
     try {
-      final telegram = js.context['Telegram'];
-      final webApp = telegram['WebApp'];
       final initDataUnsafe = webApp['initDataUnsafe'];
 
       if (initDataUnsafe != null) {
+        _startParam =
+            initDataUnsafe['start_param'] ?? initDataUnsafe['startapp'];
+
         final user = initDataUnsafe['user'];
         if (user != null) {
           return {
@@ -68,6 +70,10 @@ class TelegramService {
 
   String? getUsername() {
     return _initData?['username'];
+  }
+
+  String? getStartParam() {
+    return _startParam;
   }
 
   String getFullName() {

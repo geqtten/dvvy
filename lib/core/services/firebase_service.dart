@@ -82,6 +82,32 @@ class FirebaseService {
     }
   }
 
+  Future<Map<String, dynamic>?> getGroupById(String groupId) async {
+    try {
+      final doc = await _firestore
+          .collection(_groupsCollection)
+          .doc(groupId)
+          .get();
+
+      if (!doc.exists || doc.data() == null) {
+        return null;
+      }
+
+      final data = doc.data()!;
+      return {
+        'id': doc.id,
+        'name': data['name'] ?? '',
+        'createdAt': data['createdAt'],
+        'userId': data['userId'],
+        'expensesId': data['id'] ?? doc.id,
+        'expensesName': data['name'] ?? '',
+      };
+    } catch (e) {
+      print('Error getting group by id: $e');
+      return null;
+    }
+  }
+
   Stream<List<Map<String, dynamic>>> getExpenses(String id) {
     try {
       return _firestore

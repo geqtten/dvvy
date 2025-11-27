@@ -13,9 +13,59 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final FirebaseService _firebaseService = FirebaseService();
+  bool _hasHandledDeepLink = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _handleIncomingDeepLink();
+  }
 
   String _getUserId() {
     return TelegramService().getUserId() ?? 'test_user_123';
+  }
+
+  void _handleIncomingDeepLink() {
+    final startParam = TelegramService().getStartParam();
+    if (startParam == null || _hasHandledDeepLink) return;
+
+    _hasHandledDeepLink = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _openSharedGroup(startParam);
+    });
+  }
+
+  Future<void> _openSharedGroup(String groupId) async {
+    final group = await _firebaseService.getGroupById(groupId);
+    if (!mounted || group == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Группа недоступна или удалена'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: accentColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
+      return;
+    }
+
+    if (!mounted) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => GroupDetailsScreen(
+          expensesId: group['id'],
+          expensesName: group['name'],
+          groupId: group['id'],
+          groupName: group['name'] ?? '',
+        ),
+      ),
+    );
   }
 
   @override
