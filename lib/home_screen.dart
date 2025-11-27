@@ -21,6 +21,11 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: Text('Список ваших групп'),
+        toolbarHeight: 40,
+        backgroundColor: backgroundColor,
+      ),
       backgroundColor: backgroundColor,
       body: StreamBuilder<List<Map<String, dynamic>>>(
         stream: _firebaseService.getGroups(_getUserId()),
@@ -166,6 +171,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 context,
                 MaterialPageRoute(
                   builder: (context) => GroupDetailsScreen(
+                    id: group['id'],
+                    expensesName: group['name'],
                     groupId: group['id'],
                     groupName: group['name'] ?? '',
                   ),
