@@ -7,18 +7,19 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:divvy/core/theme/constants/color.dart';
 import 'package:divvy/core/theme/custom_text_form_field.dart';
 import 'package:divvy/core/services/firebase_service.dart';
+import 'package:divvy/core/services/telegram_service.dart';
 
 class GroupDetailsScreen extends StatefulWidget {
   final String groupId;
   final String groupName;
-  final String id;
+  final String expensesId;
   final String expensesName;
 
   const GroupDetailsScreen({
     super.key,
     required this.groupId,
     required this.groupName,
-    required this.id,
+    required this.expensesId,
     required this.expensesName,
   });
 
@@ -28,6 +29,7 @@ class GroupDetailsScreen extends StatefulWidget {
 
 class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
   final FirebaseService _firebaseService = FirebaseService();
+  final TelegramService _telegramService = TelegramService();
 
   @override
   Widget build(BuildContext context) {
@@ -110,7 +112,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
         final memberCount = snapshot.data?.length ?? 0;
 
         return StreamBuilder<List<Map<String, dynamic>>>(
-          stream: _firebaseService.getExpenses(widget.id),
+          stream: _firebaseService.getExpenses(widget.expensesId),
           builder: (context, expensesSnapshot) {
             double totalAmount = 0;
             int expensesCount = 0;
@@ -290,7 +292,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
           ),
           const SizedBox(height: 16),
           StreamBuilder<List<Map<String, dynamic>>>(
-            stream: _firebaseService.getExpenses(widget.id),
+            stream: _firebaseService.getExpenses(widget.expensesId),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const SizedBox(
@@ -398,6 +400,95 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                             ],
                           ),
                         ),
+                        IconButton(
+                          onPressed: () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (context) {
+                                return AlertDialog(
+                                  title: const Text('Удалить расход?'),
+                                  content: Text(
+                                    'Вы уверены, что хотите удалить "${expense['name'] ?? 'расход'}"?',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(context).pop(false),
+                                      child: const Text(
+                                        'Отмена',
+                                        style: TextStyle(
+                                          color: Color(0xFF9E9E9E),
+                                        ),
+                                      ),
+                                    ),
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        gradient: const LinearGradient(
+                                          colors: [
+                                            primaryColor,
+                                            Color(0xFF8B7FFF),
+                                          ],
+                                        ),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: ElevatedButton(
+                                        onPressed: () =>
+                                            Navigator.of(context).pop(true),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.transparent,
+                                          shadowColor: Colors.transparent,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          'Удалить',
+                                          style: TextStyle(color: Colors.white),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+
+                            if (confirm == true) {
+                              try {
+                                await _firebaseService.deleteExpenses(
+                                  expense['id'] as String,
+                                );
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: const Text('Расход удален'),
+                                      behavior: SnackBarBehavior.floating,
+                                      backgroundColor: secondaryColor,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Ошибка удаления: $e'),
+                                      backgroundColor: accentColor,
+                                      behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                  );
+                                }
+                              }
+                            }
+                          },
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                        ),
                       ],
                     ),
                   );
@@ -498,10 +589,20 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
 
       if (response.statusCode == 200) {
         final link = jsonDecode(response.body)['link'];
-        final uri = Uri.parse(link);
+        final message =
+            'Присоединяйся к группе "${widget.groupName}" и следи за расходами!';
+        final shareUrl =
+            'https://t.me/share/url?url=${Uri.encodeComponent(link)}&text=${Uri.encodeComponent(message)}';
 
-        if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-          throw "Не удалось открыть Telegram";
+        final openedInTelegram = _telegramService.openTelegramLink(
+          shareUrl.trim(),
+        );
+
+        if (!openedInTelegram) {
+          final uri = Uri.parse(link);
+          if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+            throw "Не удалось открыть Telegram";
+          }
         }
       } else {
         throw "Ошибка функции: ${response.statusCode}";
@@ -608,7 +709,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                     try {
                       await _firebaseService.createExpenses(
                         name: expensesName,
-                        id: widget.id,
+                        id: widget.expensesId,
                         expense: widget.expensesName,
                         amount: amount,
                       );

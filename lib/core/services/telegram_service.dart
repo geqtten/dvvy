@@ -80,6 +80,18 @@ class TelegramService {
     return _initData != null && _initData!.isNotEmpty;
   }
 
+  bool openTelegramLink(String url) {
+    try {
+      final telegram = js.context['Telegram'];
+      final webApp = telegram['WebApp'];
+      webApp.callMethod('openTelegramLink', [url]);
+      return true;
+    } catch (e) {
+      print('Error opening Telegram link: $e');
+      return false;
+    }
+  }
+
   void close() {
     try {
       final telegram = js.context['Telegram'];
