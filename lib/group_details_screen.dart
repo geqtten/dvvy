@@ -29,9 +29,6 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
   final FirebaseService _firebaseService = FirebaseService();
   final TelegramService _telegramService = TelegramService();
   final TelegramBotService _botService = TelegramBotService();
-  late final AppLinkSharing _linkSharing = AppLinkSharing(
-    botService: _botService,
-  );
 
   @override
   Widget build(BuildContext context) {
@@ -592,39 +589,17 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
 
       final message =
           'Присоединяйся к группе "${widget.groupName}" и следи за расходами!';
+      final shareUrl =
+          'https://t.me/share/url?url=${Uri.encodeComponent(link)}&text=${Uri.encodeComponent(message)}';
 
-      final linkSent = await _linkSharing.sendLinkWithButton(
-        link: link,
-        buttonText: 'Открыть группу',
-        message: message,
+      final openedInTelegram = _telegramService.openTelegramLink(
+        shareUrl.trim(),
       );
 
-      if (linkSent) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Ссылка отправлена в Telegram'),
-              behavior: SnackBarBehavior.floating,
-              backgroundColor: secondaryColor,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-          );
-        }
-      } else {
-        final shareUrl =
-            'https://t.me/share/url?url=${Uri.encodeComponent(link)}&text=${Uri.encodeComponent(message)}';
-
-        final openedInTelegram = _telegramService.openTelegramLink(
-          shareUrl.trim(),
-        );
-
-        if (!openedInTelegram) {
-          final uri = Uri.parse(link);
-          if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-            throw "Не удалось открыть Telegram";
-          }
+      if (!openedInTelegram) {
+        final uri = Uri.parse(shareUrl);
+        if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+          throw "Не удалось открыть Telegram";
         }
       }
     } catch (e) {
