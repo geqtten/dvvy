@@ -171,7 +171,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 context,
                 MaterialPageRoute(
                   builder: (context) => GroupDetailsScreen(
-                    id: group['id'],
+                    expensesId: group['id'],
                     expensesName: group['name'],
                     groupId: group['id'],
                     groupName: group['name'] ?? '',

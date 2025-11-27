@@ -121,7 +121,6 @@ class FirebaseService {
     required String name,
     required String id,
     required String expense,
-    String? summary,
     String? amount,
   }) async {
     try {
