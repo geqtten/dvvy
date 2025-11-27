@@ -53,15 +53,40 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
+    final telegramService = TelegramService();
+    final userId = _getUserId();
+    final sourceGroupId = group['sourceGroupId'] ?? group['id'];
+
+    final joined = await _firebaseService.linkUserToGroup(
+      sourceGroupId: sourceGroupId,
+      userId: userId,
+      firstName: telegramService.getFirstName(),
+      lastName: telegramService.getLastName(),
+      username: telegramService.getUsername(),
+    );
+
+    if (!joined && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Не удалось добавить вас в группу'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: accentColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    }
+
     if (!mounted) return;
 
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => GroupDetailsScreen(
-          expensesId: group['id'],
+          expensesId: sourceGroupId,
           expensesName: group['name'],
-          groupId: group['id'],
+          groupId: sourceGroupId,
           groupName: group['name'] ?? '',
         ),
       ),
@@ -217,13 +242,14 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
             onTap: () {
+              final sourceGroupId = group['sourceGroupId'] ?? group['id'];
               Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => GroupDetailsScreen(
-                    expensesId: group['id'],
+                    expensesId: sourceGroupId,
                     expensesName: group['name'],
-                    groupId: group['id'],
+                    groupId: sourceGroupId,
                     groupName: group['name'] ?? '',
                   ),
                 ),

@@ -18,11 +18,14 @@ class FirebaseService {
           .snapshots()
           .map((snapshot) {
             return snapshot.docs.map((doc) {
+              final data = doc.data();
               return {
                 'id': doc.id,
-                'name': doc.data()['name'] ?? '',
-                'createdAt': doc.data()['createdAt'],
-                'userId': doc.data()['userId'],
+                'name': data['name'] ?? '',
+                'createdAt': data['createdAt'],
+                'userId': data['userId'],
+                'sourceGroupId': data['sourceGroupId'] ?? doc.id,
+                'ownerId': data['ownerId'] ?? data['userId'],
               };
             }).toList();
           })
@@ -44,10 +47,18 @@ class FirebaseService {
     String? lastName,
   }) async {
     try {
-      final docRef = await _firestore.collection(_groupsCollection).add({
+      final docRef = _firestore.collection(_groupsCollection).doc();
+      await docRef.set({
         'name': name,
         'createdAt': FieldValue.serverTimestamp(),
         'userId': userId,
+        'ownerId': userId,
+        'sourceGroupId': docRef.id,
+        'member': {
+          'firstName': firstName,
+          'lastName': lastName,
+          'username': username,
+        },
       });
 
       print('Group created successfully: $name with ID: ${docRef.id}');
@@ -60,9 +71,20 @@ class FirebaseService {
 
   Future<void> deleteGroup(String groupId) async {
     try {
-      _firestore.collection(_groupsCollection).doc(groupId);
+      final batch = _firestore.batch();
+      final groupRef = _firestore.collection(_groupsCollection).doc(groupId);
+      batch.delete(groupRef);
 
-      await _firestore.collection(_groupsCollection).doc(groupId).delete();
+      final sharedDocs = await _firestore
+          .collection(_groupsCollection)
+          .where('sourceGroupId', isEqualTo: groupId)
+          .get();
+
+      for (final doc in sharedDocs.docs) {
+        batch.delete(doc.reference);
+      }
+
+      await batch.commit();
       print('Group deleted successfully: $groupId');
     } catch (e) {
       print('Error deleting group: $e');
@@ -75,6 +97,16 @@ class FirebaseService {
       await _firestore.collection(_groupsCollection).doc(groupId).update({
         'name': newName,
       });
+
+      final sharedDocs = await _firestore
+          .collection(_groupsCollection)
+          .where('sourceGroupId', isEqualTo: groupId)
+          .get();
+
+      for (final doc in sharedDocs.docs) {
+        if (doc.id == groupId) continue;
+        await doc.reference.update({'name': newName});
+      }
       print('Group updated successfully: $groupId');
     } catch (e) {
       print('Error updating group: $e');
@@ -99,12 +131,69 @@ class FirebaseService {
         'name': data['name'] ?? '',
         'createdAt': data['createdAt'],
         'userId': data['userId'],
-        'expensesId': data['id'] ?? doc.id,
+        'expensesId': data['sourceGroupId'] ?? doc.id,
         'expensesName': data['name'] ?? '',
+        'sourceGroupId': data['sourceGroupId'] ?? doc.id,
+        'ownerId': data['ownerId'] ?? data['userId'],
       };
     } catch (e) {
       print('Error getting group by id: $e');
       return null;
+    }
+  }
+
+  Future<bool> linkUserToGroup({
+    required String sourceGroupId,
+    required String userId,
+    String? firstName,
+    String? lastName,
+    String? username,
+  }) async {
+    try {
+      final groupDoc = await _firestore
+          .collection(_groupsCollection)
+          .doc(sourceGroupId)
+          .get();
+
+      if (!groupDoc.exists || groupDoc.data() == null) {
+        return false;
+      }
+
+      final data = groupDoc.data()!;
+      if ((data['userId'] ?? '') == userId) {
+        return true;
+      }
+
+      final existing = await _firestore
+          .collection(_groupsCollection)
+          .where('userId', isEqualTo: userId)
+          .where('sourceGroupId', isEqualTo: sourceGroupId)
+          .limit(1)
+          .get();
+
+      if (existing.docs.isNotEmpty) {
+        return true;
+      }
+
+      final docRef = _firestore.collection(_groupsCollection).doc();
+      await docRef.set({
+        'name': data['name'] ?? '',
+        'createdAt': FieldValue.serverTimestamp(),
+        'userId': userId,
+        'sourceGroupId': data['sourceGroupId'] ?? sourceGroupId,
+        'ownerId': data['ownerId'] ?? data['userId'],
+        'invitedBy': data['ownerId'] ?? data['userId'],
+        'member': {
+          'firstName': firstName,
+          'lastName': lastName,
+          'username': username,
+        },
+      });
+
+      return true;
+    } catch (e) {
+      print('Error linking user to group: $e');
+      return false;
     }
   }
 
