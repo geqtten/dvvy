@@ -115,6 +115,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
             double totalAmount = 0;
             double totalMembers = 0;
             int expensesCount = 0;
+            int membersCount = 0;
 
             if (expensesSnapshot.hasData) {
               final expenses = expensesSnapshot.data ?? [];
@@ -127,6 +128,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
             }
             if (membersSnapshot.hasData) {
               final members = membersSnapshot.data ?? [];
+              membersCount = members.length;
               for (var member in members) {
                 final membersStr = member['firstname']?.toString() ?? '0';
                 final members = double.tryParse(membersStr) ?? 0;
@@ -196,7 +198,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                       Expanded(
                         child: _buildStatCard(
                           'Участники',
-                          totalMembers.toStringAsFixed(0),
+                          '$membersCount',
                           Icons.people,
                           onTap: _showMembersDialog,
                         ),
