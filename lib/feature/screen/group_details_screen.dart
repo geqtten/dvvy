@@ -113,8 +113,8 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
           stream: _firebaseService.getExpenses(widget.expensesId),
           builder: (context, expensesSnapshot) {
             double totalAmount = 0;
+            double totalMembers = 0;
             int expensesCount = 0;
-            int memberCount = 0;
 
             if (expensesSnapshot.hasData) {
               final expenses = expensesSnapshot.data ?? [];
@@ -123,6 +123,14 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                 final amountStr = expense['amount']?.toString() ?? '0';
                 final amount = double.tryParse(amountStr) ?? 0;
                 totalAmount += amount;
+              }
+            }
+            if (membersSnapshot.hasData) {
+              final members = membersSnapshot.data ?? [];
+              for (var member in members) {
+                final membersStr = member['firstname']?.toString() ?? '0';
+                final members = double.tryParse(membersStr) ?? 0;
+                totalMembers += members;
               }
             }
 
@@ -188,7 +196,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                       Expanded(
                         child: _buildStatCard(
                           'Участники',
-                          '$memberCount',
+                          totalMembers.toStringAsFixed(0),
                           Icons.people,
                           onTap: _showMembersDialog,
                         ),
