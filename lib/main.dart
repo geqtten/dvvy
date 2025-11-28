@@ -1,7 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
-import 'package:divvy/app.dart';
+import 'package:divvy/core/app.dart';
 
 import 'package:divvy/core/services/telegram_service.dart';
 

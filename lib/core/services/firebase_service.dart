@@ -26,6 +26,7 @@ class FirebaseService {
                 'userId': data['userId'],
                 'sourceGroupId': data['sourceGroupId'] ?? doc.id,
                 'ownerId': data['ownerId'] ?? data['userId'],
+                'member': data['member'],
               };
             }).toList();
           })
@@ -135,10 +136,46 @@ class FirebaseService {
         'expensesName': data['name'] ?? '',
         'sourceGroupId': data['sourceGroupId'] ?? doc.id,
         'ownerId': data['ownerId'] ?? data['userId'],
+        'member': data['member'],
       };
     } catch (e) {
       print('Error getting group by id: $e');
       return null;
+    }
+  }
+
+  Stream<List<Map<String, dynamic>>> getGroupMembers(String sourceGroupId) {
+    try {
+      return _firestore
+          .collection(_groupsCollection)
+          .where('sourceGroupId', isEqualTo: sourceGroupId)
+          .orderBy('createdAt', descending: false)
+          .snapshots()
+          .map((snapshot) {
+            return snapshot.docs.map((doc) {
+              final data = doc.data();
+              final member = data['member'] ?? {};
+              final firstName = member['firstName'] ?? '';
+              final lastName = member['lastName'] ?? '';
+              final username = member['username'];
+              return {
+                'id': doc.id,
+                'userId': data['userId'],
+                'firstName': firstName,
+                'lastName': lastName,
+                'username': username,
+                'isOwner':
+                    (data['ownerId'] ?? data['userId']) == data['userId'],
+              };
+            }).toList();
+          })
+          .handleError((error) {
+            print('Error getting group members: $error');
+            return <Map<String, dynamic>>[];
+          });
+    } catch (e) {
+      print('Error in getGroupMembers: $e');
+      return Stream.value(<Map<String, dynamic>>[]);
     }
   }
 

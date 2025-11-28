@@ -1,4 +1,4 @@
-import 'package:divvy/home_screen.dart';
+import 'package:divvy/feature/screen/home_screen.dart';
 import 'package:flutter/material.dart';
 
 class DvvyApp extends StatelessWidget {

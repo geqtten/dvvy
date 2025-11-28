@@ -1,6 +1,6 @@
 import 'package:divvy/core/services/telegram_service.dart';
 import 'package:divvy/core/theme/constants/color.dart';
-import 'package:divvy/group_details_screen.dart';
+import 'package:divvy/feature/screen/group_details_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:divvy/core/services/firebase_service.dart';
 
@@ -143,6 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: FloatingActionButton.extended(
           onPressed: _showCreateGroupDialog,
           backgroundColor: Colors.transparent,
+          highlightElevation: 0,
           elevation: 0,
           hoverElevation: 0,
           label: const Row(

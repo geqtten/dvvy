@@ -84,6 +84,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
         child: FloatingActionButton.extended(
           onPressed: _addExpense,
           backgroundColor: Colors.transparent,
+          highlightElevation: 0,
           hoverElevation: 0,
           elevation: 0,
           label: const Row(
@@ -106,15 +107,14 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
 
   Widget _buildGroupInfo() {
     return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: _firebaseService.getGroups(widget.groupId),
-      builder: (context, snapshot) {
-        final memberCount = snapshot.data?.length ?? 0;
-
+      stream: _firebaseService.getGroupMembers(widget.groupId),
+      builder: (context, membersSnapshot) {
         return StreamBuilder<List<Map<String, dynamic>>>(
           stream: _firebaseService.getExpenses(widget.expensesId),
           builder: (context, expensesSnapshot) {
             double totalAmount = 0;
             int expensesCount = 0;
+            int memberCount = 0;
 
             if (expensesSnapshot.hasData) {
               final expenses = expensesSnapshot.data ?? [];
@@ -322,7 +322,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          Icons.receipt_long_outlined,
+                          Icons.check_box,
                           size: 64,
                           color: primaryColor.withOpacity(0.3),
                         ),
@@ -401,7 +401,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                         ),
                         IconButton(
                           onPressed: () async {
-                            final confirm = await showDialog<bool>(
+                            final confirm = await showDialog(
                               context: context,
                               builder: (context) {
                                 return AlertDialog(
@@ -409,6 +409,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                                   content: Text(
                                     'Вы уверены, что хотите удалить "${expense['name'] ?? 'расход'}"?',
                                   ),
+                                  backgroundColor: backgroundColor,
                                   actions: [
                                     TextButton(
                                       onPressed: () =>
@@ -528,7 +529,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
         content: SizedBox(
           width: double.maxFinite,
           child: StreamBuilder<List<Map<String, dynamic>>>(
-            stream: _firebaseService.getGroups(widget.groupId),
+            stream: _firebaseService.getGroupMembers(widget.groupId),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
