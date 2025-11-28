@@ -275,7 +275,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Row(
+          Row(
             children: [
               Icon(Icons.receipt_long, color: primaryColor),
               SizedBox(width: 12),
@@ -286,6 +286,11 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF2D3142),
                 ),
+              ),
+              const Spacer(),
+              TextButton(
+                onPressed: () => _shareExpenses(),
+                child: Text('Разделить траты', style: TextStyle(fontSize: 18)),
               ),
             ],
           ),
@@ -322,7 +327,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          Icons.check_box,
+                          Icons.receipt,
                           size: 64,
                           color: primaryColor.withOpacity(0.3),
                         ),
@@ -616,6 +621,21 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
           ),
         );
       }
+    }
+  }
+
+  void _shareExpenses() {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Реализация разделения скоро будет добавлена :)"),
+          backgroundColor: primaryColor,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
     }
   }
 
