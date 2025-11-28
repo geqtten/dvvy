@@ -45,7 +45,6 @@ class FirebaseService {
     required String userId,
     String? username,
     required String firstName,
-    String? lastName,
   }) async {
     try {
       final docRef = _firestore.collection(_groupsCollection).doc();
@@ -55,11 +54,7 @@ class FirebaseService {
         'userId': userId,
         'ownerId': userId,
         'sourceGroupId': docRef.id,
-        'member': {
-          'firstName': firstName,
-          'lastName': lastName,
-          'username': username,
-        },
+        'member': {'firstName': firstName, 'username': username},
       });
 
       print('Group created successfully: $name with ID: ${docRef.id}');
@@ -156,13 +151,13 @@ class FirebaseService {
               final data = doc.data();
               final member = data['member'] ?? {};
               final firstName = member['firstName'] ?? '';
-              final lastName = member['lastName'] ?? '';
+
               final username = member['username'];
               return {
                 'id': doc.id,
                 'userId': data['userId'],
                 'firstName': firstName,
-                'lastName': lastName,
+
                 'username': username,
                 'isOwner':
                     (data['ownerId'] ?? data['userId']) == data['userId'],
@@ -183,7 +178,6 @@ class FirebaseService {
     required String sourceGroupId,
     required String userId,
     String? firstName,
-    String? lastName,
     String? username,
   }) async {
     try {
@@ -220,11 +214,7 @@ class FirebaseService {
         'sourceGroupId': data['sourceGroupId'] ?? sourceGroupId,
         'ownerId': data['ownerId'] ?? data['userId'],
         'invitedBy': data['ownerId'] ?? data['userId'],
-        'member': {
-          'firstName': firstName,
-          'lastName': lastName,
-          'username': username,
-        },
+        'member': {'firstName': firstName, 'username': username},
       });
 
       return true;

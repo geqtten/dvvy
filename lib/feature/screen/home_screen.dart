@@ -61,7 +61,6 @@ class _HomeScreenState extends State<HomeScreen> {
       sourceGroupId: sourceGroupId,
       userId: userId,
       firstName: telegramService.getFirstName(),
-      lastName: telegramService.getLastName(),
       username: telegramService.getUsername(),
     );
 
@@ -395,7 +394,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         userId: telegram.getUserId() ?? 'test_user_123',
                         username: telegram.getUsername(),
                         firstName: telegram.getFirstName() ?? 'Test',
-                        lastName: telegram.getLastName(),
                       );
 
                       scaffoldMessenger.showSnackBar(

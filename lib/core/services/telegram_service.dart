@@ -21,7 +21,6 @@ class TelegramService {
           print('Telegram WebApp initialized');
           print('User ID: ${getUserId()}');
           print('Username: @${getUsername()}');
-          print('Full name: ${getFullName()}');
         }
       } else {
         print('Telegram WebApp API not available (running in browser)');
@@ -44,7 +43,6 @@ class TelegramService {
           return {
             'id': user['id']?.toString(),
             'first_name': user['first_name'],
-            'last_name': user['last_name'],
             'username': user['username'],
             'language_code': user['language_code'],
           };
@@ -64,22 +62,12 @@ class TelegramService {
     return _initData?['first_name'];
   }
 
-  String? getLastName() {
-    return _initData?['last_name'];
-  }
-
   String? getUsername() {
     return _initData?['username'];
   }
 
   String? getStartParam() {
     return _startParam;
-  }
-
-  String getFullName() {
-    final firstName = _initData?['first_name'] ?? '';
-    final lastName = _initData?['last_name'] ?? '';
-    return '$firstName $lastName'.trim();
   }
 
   bool isRunningInTelegram() {

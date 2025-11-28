@@ -28,7 +28,7 @@ void main() async {
   if (telegramService.isRunningInTelegram()) {
     print('Running in Telegram');
     print(
-      'User: ${telegramService.getFullName()} (@${telegramService.getUsername()})',
+      'User: ${telegramService.getFirstName()} (@${telegramService.getUsername()})',
     );
   } else {
     print('Running in browser mode - test user will be used');
