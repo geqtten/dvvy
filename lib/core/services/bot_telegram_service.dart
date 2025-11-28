@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:divvy/core/services/telegram_service.dart';
 import 'package:http/http.dart' as http;
 
 class TelegramBotService {
@@ -128,64 +127,5 @@ class LinkSharingService {
     } catch (e) {
       return {'success': false, 'error': e.toString()};
     }
-  }
-}
-
-class AppLinkSharing {
-  final TelegramBotService? botService;
-  final LinkSharingService? backendService;
-
-  AppLinkSharing({this.botService, this.backendService});
-
-  Future<bool> sendLinkToCurrentUser({
-    required String link,
-    String? message,
-  }) async {
-    final telegramService = TelegramService();
-    final userId = telegramService.getUserId();
-
-    if (userId == null) {
-      print('User ID not available');
-      return false;
-    }
-
-    final botService = this.botService;
-    if (botService != null) {
-      final result = await botService.sendLink(
-        chatId: userId,
-        link: link,
-        message: message,
-      );
-      return result['success'] == true;
-    }
-
-    return false;
-  }
-
-  Future<bool> sendLinkWithButton({
-    required String link,
-    required String buttonText,
-    String? message,
-  }) async {
-    final telegramService = TelegramService();
-    final userId = telegramService.getUserId();
-
-    if (userId == null) {
-      print('User ID not available');
-      return false;
-    }
-
-    final botService = this.botService;
-    if (botService != null) {
-      final result = await botService.sendLinkWithButton(
-        chatId: userId,
-        link: link,
-        buttonText: buttonText,
-        message: message,
-      );
-      return result['success'] == true;
-    }
-
-    return false;
   }
 }
