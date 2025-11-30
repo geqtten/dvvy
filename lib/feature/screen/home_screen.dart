@@ -210,6 +210,7 @@ class _HomeScreenState extends State<HomeScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(15),
               ),
+              color: backgroundColor,
               icon: const Icon(Icons.more_vert, color: Color(0xFF9E9E9E)),
               onSelected: (value) async {
                 if (value == 'edit') {

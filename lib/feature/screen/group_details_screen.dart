@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:divvy/core/theme/constants/color.dart';
-import 'package:divvy/core/theme/custom_text_form_field.dart';
+import 'package:divvy/core/app/components/custom_text_form_field.dart';
 import 'package:divvy/core/services/firebase_service.dart';
 import 'package:divvy/core/services/telegram_service.dart';
 import 'package:divvy/core/services/bot_telegram_service.dart';
@@ -669,6 +669,14 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                AnimatedContainer(
+                  duration: Duration(seconds: 10),
+                  child: CheckboxListTile(
+                    value: false,
+                    onChanged: null,
+                    tristate: true,
+                  ),
+                ),
                 CustomTextFormField(
                   controller: nameController,
                   labelText: 'Название расхода',
