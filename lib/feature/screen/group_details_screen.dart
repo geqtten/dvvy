@@ -404,14 +404,42 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
               ],
             ),
           ),
-          IconButton(
-            onPressed: () => _showExpenseDialog(expense: expense),
-            icon: const Icon(Icons.edit, color: primaryColor),
-          ),
-          const SizedBox(width: 2),
-          IconButton(
-            onPressed: () => _deleteExpense(expense),
-            icon: const Icon(Icons.delete, color: Colors.red),
+
+          PopupMenuButton(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+            ),
+            color: backgroundColor,
+            icon: const Icon(Icons.more_vert, color: Color(0xFF9E9E9E)),
+            onSelected: (value) async {
+              if (value == 'edit') {
+                _showExpenseDialog(expense: expense);
+              } else if (value == 'delete') {
+                await _deleteExpense(expense);
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'edit',
+                child: Row(
+                  children: [
+                    Icon(Icons.edit, color: primaryColor),
+                    SizedBox(width: 12),
+                    Text('Редактировать'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    Icon(Icons.delete, color: accentColor),
+                    SizedBox(width: 12),
+                    Text('Удалить'),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -614,34 +642,14 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
 
     if (!mounted) return;
 
-    final result = await showDialog<List<Map<String, dynamic>>>(
+    await showDialog<List<Map<String, dynamic>>>(
       context: context,
       builder: (context) => SplitExpensesDialog(
         members: members,
         totalAmount: totalAmount,
-        expenseName: widget.expensesName,
+        groupName: widget.groupName,
       ),
     );
-
-    if (result != null && result.isNotEmpty) {
-      // Здесь сохраняем долги в Firebase
-      try {
-        for (var debt in result) {
-          // await _firebaseService.saveDebt(
-          //   groupId: widget.groupId,
-          //   memberId: debt['memberId'],
-          //   amount: debt['amount'],
-          //   expensesId: widget.expensesId,
-          // );
-
-          print('Долг: ${debt['memberName']} должен ${debt['amount']} ₽');
-        }
-
-        _showSuccessSnackBar('Расходы успешно разделены!');
-      } catch (e) {
-        _showErrorSnackBar('Ошибка при сохранении: $e');
-      }
-    }
   }
 
   // ==================== Utilities ====================

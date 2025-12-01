@@ -4,13 +4,13 @@ import 'package:divvy/core/theme/constants/color.dart';
 class SplitExpensesDialog extends StatefulWidget {
   final List<Map<String, dynamic>> members;
   final double totalAmount;
-  final String expenseName;
+  final String groupName;
 
   const SplitExpensesDialog({
     super.key,
     required this.members,
     required this.totalAmount,
-    required this.expenseName,
+    required this.groupName,
   });
 
   @override
@@ -22,10 +22,11 @@ class _SplitExpensesDialogState extends State<SplitExpensesDialog> {
   final Map<String, bool> _selectedMembers = {};
   final TextEditingController _amountController = TextEditingController();
 
+  bool _isAutoSplit = true;
+
   @override
   void initState() {
     super.initState();
-    // Инициализируем всех участников как выбранных
     for (var member in widget.members) {
       _selectedMembers[member['id']] = true;
     }
@@ -63,7 +64,6 @@ class _SplitExpensesDialogState extends State<SplitExpensesDialog> {
       return;
     }
 
-    // Здесь будет логика сохранения долгов в Firebase
     final debts = <Map<String, dynamic>>[];
 
     for (var member in widget.members) {
@@ -102,8 +102,9 @@ class _SplitExpensesDialogState extends State<SplitExpensesDialog> {
             _buildHeader(),
             _buildSummaryCard(),
             _buildAmountInput(),
-            _buildExpandButton(),
-            _buildAnimatedMembersList(),
+            _choiceAmountSplit(),
+            if (!_isAutoSplit) _buildExpandButton(),
+            if (!_isAutoSplit) _buildAnimatedMembersList(),
             _buildActions(),
           ],
         ),
@@ -138,7 +139,7 @@ class _SplitExpensesDialogState extends State<SplitExpensesDialog> {
                   ),
                 ),
                 Text(
-                  widget.expenseName,
+                  widget.groupName,
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.9),
                     fontSize: 14,
@@ -214,6 +215,99 @@ class _SplitExpensesDialogState extends State<SplitExpensesDialog> {
     );
   }
 
+  Widget _choiceAmountSplit() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildChoiceOption(
+              title: 'Автоматически',
+              subtitle: 'Поровну на всех',
+              isSelected: _isAutoSplit,
+              onTap: () => setState(() => _isAutoSplit = true),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildChoiceOption(
+              title: 'Самостоятельно',
+              subtitle: 'Указать суммы',
+              isSelected: !_isAutoSplit,
+              onTap: () => setState(() => _isAutoSplit = false),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChoiceOption({
+    required String title,
+    required String subtitle,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected ? primaryColor.withOpacity(0.1) : backgroundColor,
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isSelected ? primaryColor : const Color(0xFF9E9E9E),
+                  width: 2,
+                ),
+                color: isSelected ? primaryColor : Colors.transparent,
+              ),
+              child: isSelected
+                  ? const Icon(Icons.check, size: 16, color: Colors.white)
+                  : null,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: isSelected
+                          ? primaryColor
+                          : const Color(0xFF2D3142),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isSelected
+                          ? primaryColor.withOpacity(0.7)
+                          : const Color(0xFF9E9E9E),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildAmountInput() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -283,71 +377,160 @@ class _SplitExpensesDialogState extends State<SplitExpensesDialog> {
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(15),
-            child: ListView.builder(
-              shrinkWrap: true,
-              padding: const EdgeInsets.all(8),
-              itemCount: widget.members.length,
-              itemBuilder: (context, index) {
-                final member = widget.members[index];
-                final memberId = member['id'] as String;
-                final isSelected = _selectedMembers[memberId] ?? false;
+            child: _isAutoSplit
+                ? _buildAutoSplitList()
+                : _buildManualSplitList(),
+          ),
+        ),
+      ),
+    );
+  }
 
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  margin: const EdgeInsets.only(bottom: 4),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? primaryColor.withOpacity(0.1)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
+  Widget _buildAutoSplitList() {
+    return ListView.builder(
+      shrinkWrap: true,
+      padding: const EdgeInsets.all(8),
+      itemCount: widget.members.length,
+      itemBuilder: (context, index) {
+        final member = widget.members[index];
+        final memberId = member['id'] as String;
+        final isSelected = _selectedMembers[memberId] ?? false;
+
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          margin: const EdgeInsets.only(bottom: 4),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? primaryColor.withOpacity(0.1)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: CheckboxListTile(
+            value: isSelected,
+            onChanged: (value) => _toggleMember(memberId),
+            title: Text(
+              member['firstName'] ?? 'Без имени',
+              style: TextStyle(
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                color: isSelected ? primaryColor : const Color(0xFF2D3142),
+              ),
+            ),
+            subtitle: member['username'] != null
+                ? Text(
+                    '@${member['username']}',
+                    style: TextStyle(
+                      color: isSelected
+                          ? primaryColor.withOpacity(0.7)
+                          : const Color(0xFF9E9E9E),
+                      fontSize: 12,
+                    ),
+                  )
+                : null,
+            activeColor: primaryColor,
+            checkColor: Colors.white,
+            controlAffinity: ListTileControlAffinity.leading,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildManualSplitList() {
+    return ListView.builder(
+      shrinkWrap: true,
+      padding: const EdgeInsets.all(8),
+      itemCount: widget.members.length,
+      itemBuilder: (context, index) {
+        final member = widget.members[index];
+        final memberId = member['id'] as String;
+        final isSelected = _selectedMembers[memberId] ?? false;
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? primaryColor.withOpacity(0.1)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected
+                  ? primaryColor.withOpacity(0.3)
+                  : Colors.transparent,
+            ),
+          ),
+          child: Row(
+            children: [
+              Checkbox(
+                value: isSelected,
+                onChanged: (value) => _toggleMember(memberId),
+                activeColor: primaryColor,
+              ),
+              CircleAvatar(
+                backgroundColor: isSelected
+                    ? primaryColor
+                    : primaryColor.withOpacity(0.2),
+                radius: 18,
+                child: Text(
+                  (member['firstName']?[0] ?? '?').toUpperCase(),
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : primaryColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
                   ),
-                  child: CheckboxListTile(
-                    value: isSelected,
-                    onChanged: (value) => _toggleMember(memberId),
-                    title: Text(
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
                       member['firstName'] ?? 'Без имени',
                       style: TextStyle(
-                        fontWeight: isSelected
-                            ? FontWeight.w600
-                            : FontWeight.normal,
+                        fontWeight: FontWeight.w600,
                         color: isSelected
                             ? primaryColor
                             : const Color(0xFF2D3142),
                       ),
                     ),
-                    subtitle: member['username'] != null
-                        ? Text(
-                            '@${member['username']}',
-                            style: TextStyle(
-                              color: isSelected
-                                  ? primaryColor.withOpacity(0.7)
-                                  : const Color(0xFF9E9E9E),
-                              fontSize: 12,
-                            ),
-                          )
-                        : null,
-                    secondary: CircleAvatar(
-                      backgroundColor: isSelected
-                          ? primaryColor
-                          : primaryColor.withOpacity(0.2),
-                      child: Text(
-                        (member['firstName']?[0] ?? '?').toUpperCase(),
+                    if (member['username'] != null)
+                      Text(
+                        '@${member['username']}',
                         style: TextStyle(
-                          color: isSelected ? Colors.white : primaryColor,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          color: isSelected
+                              ? primaryColor.withOpacity(0.7)
+                              : const Color(0xFF9E9E9E),
                         ),
                       ),
-                    ),
-                    activeColor: primaryColor,
-                    checkColor: Colors.white,
-                    controlAffinity: ListTileControlAffinity.leading,
+                  ],
+                ),
+              ),
+              SizedBox(
+                width: 100,
+                child: TextField(
+                  enabled: isSelected,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: isSelected ? primaryColor : const Color(0xFF9E9E9E),
                   ),
-                );
-              },
-            ),
+                  decoration: InputDecoration(
+                    suffixText: '₽',
+                    hintText: '0',
+                    border: InputBorder.none,
+                    enabled: isSelected,
+                  ),
+                  onChanged: (value) {},
+                ),
+              ),
+            ],
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
