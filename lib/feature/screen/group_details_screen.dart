@@ -409,6 +409,195 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                           ),
                         ),
                         IconButton(
+                          onPressed: () {
+                            final editNameController = TextEditingController();
+                            final editExpensesController =
+                                TextEditingController();
+
+                            editNameController.text = expense['name'] ?? '';
+                            editExpensesController.text =
+                                expense['amount']?.toString() ?? '';
+
+                            showDialog(
+                              context: context,
+                              builder: (BuildContext dialogContext) {
+                                final formKey = GlobalKey<FormState>();
+
+                                return AlertDialog(
+                                  backgroundColor: cardColor,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(25),
+                                  ),
+                                  title: const Text(
+                                    'Редактирование расхода',
+                                    style: TextStyle(
+                                      color: Color(0xFF2D3142),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  content: Form(
+                                    key: formKey,
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        AnimatedContainer(
+                                          duration: Duration(seconds: 10),
+                                          child: CheckboxListTile(
+                                            value: false,
+                                            onChanged: null,
+                                            tristate: true,
+                                          ),
+                                        ),
+                                        CustomTextFormField(
+                                          controller: editNameController,
+                                          labelText: 'Название расхода',
+
+                                          validator: (value) {
+                                            if (value == null ||
+                                                value.trim().isEmpty) {
+                                              return 'Пожалуйста, введите новое название';
+                                            }
+                                            return null;
+                                          },
+                                          autofocus: true,
+                                          textCapitalization:
+                                              TextCapitalization.sentences,
+                                        ),
+                                        const SizedBox(height: 16),
+                                        CustomTextFormField(
+                                          controller: editExpensesController,
+                                          labelText: 'Сумма',
+                                          keyboardType: TextInputType.number,
+                                          validator: (value) {
+                                            if (value == null ||
+                                                value.trim().isEmpty) {
+                                              return 'Пожалуйста, введите сумму';
+                                            }
+                                            final amount = double.tryParse(
+                                              value.trim(),
+                                            );
+                                            if (amount == null || amount <= 0) {
+                                              return 'Пожалуйста, введите корректную сумму';
+                                            }
+                                            return null;
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.of(dialogContext).pop();
+                                      },
+                                      child: const Text(
+                                        'Отмена',
+                                        style: TextStyle(
+                                          color: Color(0xFF9E9E9E),
+                                        ),
+                                      ),
+                                    ),
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        gradient: const LinearGradient(
+                                          colors: [
+                                            primaryColor,
+                                            Color(0xFF8B7FFF),
+                                          ],
+                                        ),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: ElevatedButton(
+                                        onPressed: () async {
+                                          if (formKey.currentState!
+                                              .validate()) {
+                                            final expensesName =
+                                                editNameController.text.trim();
+                                            final amount = double.parse(
+                                              editExpensesController.text
+                                                  .trim(),
+                                            );
+                                            Navigator.of(dialogContext).pop();
+
+                                            try {
+                                              await _firebaseService
+                                                  .updateExpenses(
+                                                    expense['id'] as String,
+                                                    expensesName,
+                                                    amount,
+                                                  );
+
+                                              if (mounted) {
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(
+                                                      'Расход "$expensesName" на сумму $amount ₽ обновлен',
+                                                    ),
+                                                    behavior: SnackBarBehavior
+                                                        .floating,
+                                                    backgroundColor:
+                                                        secondaryColor,
+                                                    shape: RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            10,
+                                                          ),
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+                                            } catch (e) {
+                                              if (mounted) {
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text('Ошибка: $e'),
+                                                    backgroundColor:
+                                                        accentColor,
+                                                    behavior: SnackBarBehavior
+                                                        .floating,
+                                                    shape: RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            10,
+                                                          ),
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+                                            }
+                                          }
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.transparent,
+                                          shadowColor: Colors.transparent,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          'Обновить',
+                                          style: TextStyle(color: Colors.white),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ).then((_) {
+                              editNameController.dispose();
+                              editExpensesController.dispose();
+                            });
+                          },
+                          icon: const Icon(Icons.edit, color: primaryColor),
+                        ),
+                        SizedBox(width: 2),
+                        IconButton(
                           onPressed: () async {
                             final confirm = await showDialog(
                               context: context,
@@ -680,7 +869,6 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                 CustomTextFormField(
                   controller: nameController,
                   labelText: 'Название расхода',
-                  hintText: 'Введите название',
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
                       return 'Пожалуйста, введите название';
@@ -694,7 +882,6 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                 CustomTextFormField(
                   controller: expensesController,
                   labelText: 'Сумма',
-                  hintText: 'Введите сумму',
                   keyboardType: TextInputType.number,
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {

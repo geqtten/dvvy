@@ -293,10 +293,15 @@ class FirebaseService {
     }
   }
 
-  Future<void> updateExpenses(String id, String newName) async {
+  Future<void> updateExpenses(
+    String id,
+    String newName,
+    double newAmount,
+  ) async {
     try {
       await _firestore.collection(_expensesCollection).doc(id).update({
         'name': newName,
+        'amount': newAmount,
       });
       print('Expense updated successfully: $id');
     } catch (e) {
