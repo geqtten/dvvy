@@ -517,10 +517,14 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                   final member = members[index];
                   return ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: primaryColor.withOpacity(0.2),
+                      backgroundColor: primaryColor,
                       child: Text(
                         (member['firstName']?[0] ?? '?').toUpperCase(),
-                        style: const TextStyle(color: primaryColor),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
                     title: Text(

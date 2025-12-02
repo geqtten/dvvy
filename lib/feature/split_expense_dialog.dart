@@ -101,7 +101,6 @@ class _SplitExpensesDialogState extends State<SplitExpensesDialog> {
           children: [
             _buildHeader(),
             _buildSummaryCard(),
-            _buildAmountInput(),
             _choiceAmountSplit(),
             if (!_isAutoSplit) _buildExpandButton(),
             if (!_isAutoSplit) _buildAnimatedMembersList(),
@@ -308,28 +307,6 @@ class _SplitExpensesDialogState extends State<SplitExpensesDialog> {
     );
   }
 
-  Widget _buildAmountInput() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: TextField(
-        controller: _amountController,
-        keyboardType: TextInputType.number,
-        style: const TextStyle(fontSize: 16),
-        decoration: InputDecoration(
-          labelText: 'Общая сумма',
-          suffixText: '₽',
-          prefixIcon: const Icon(Icons.currency_ruble, color: primaryColor),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: const BorderSide(color: primaryColor, width: 2),
-          ),
-        ),
-        onChanged: (value) => setState(() {}),
-      ),
-    );
-  }
-
   Widget _buildExpandButton() {
     return InkWell(
       onTap: () => setState(() => _isExpanded = !_isExpanded),
@@ -508,7 +485,7 @@ class _SplitExpensesDialogState extends State<SplitExpensesDialog> {
                 ),
               ),
               SizedBox(
-                width: 100,
+                width: 110,
                 child: TextField(
                   enabled: isSelected,
                   keyboardType: TextInputType.number,
@@ -524,6 +501,7 @@ class _SplitExpensesDialogState extends State<SplitExpensesDialog> {
                     border: InputBorder.none,
                     enabled: isSelected,
                   ),
+                  // TODO: implement manual split amount
                   onChanged: (value) {},
                 ),
               ),
