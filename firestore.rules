@@ -10,6 +10,12 @@ service cloud.firestore {
     match /expenses/{expenseId} {
       allow read, write: if true; // Для тестирования - разрешить все
     }
+    
+    // Правила для конфигурации приложения (только через Cloud Functions)
+    match /appConfig/{document=**} {
+      allow read: if false; // Только через Cloud Functions
+      allow write: if false; // Только через Cloud Functions
+    }
   }
 }
 

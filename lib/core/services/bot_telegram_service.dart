@@ -1,20 +1,39 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:divvy/core/services/config_service.dart';
 
 class TelegramBotService {
-  static const String botToken =
-      "7846396440:AAHjfblykwZhTTGxNvOob-lCRyGg0hH65xo";
-
-  String get _baseUrl => 'https://api.telegram.org/bot$botToken';
+  final ConfigService _configService = ConfigService();
+  String? _cachedBotToken;
   String? _cachedBotUsername;
+
+  Future<String?> _getBotToken() async {
+    if (_cachedBotToken != null) {
+      return _cachedBotToken;
+    }
+    _cachedBotToken = await _configService.getBotToken();
+    return _cachedBotToken;
+  }
 
   Future<String?> _getBotUsername() async {
     if (_cachedBotUsername != null) {
       return _cachedBotUsername;
     }
 
+    _cachedBotUsername = await _configService.getBotUsername();
+    if (_cachedBotUsername != null) {
+      return _cachedBotUsername;
+    }
+
+    final token = await _getBotToken();
+    if (token == null) {
+      return null;
+    }
+
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/getMe'));
+      final response = await http.get(
+        Uri.parse('https://api.telegram.org/bot$token/getMe'),
+      );
       final result = jsonDecode(response.body);
 
       if (result['ok'] == true) {
@@ -41,10 +60,16 @@ class TelegramBotService {
     String? message,
   }) async {
     try {
+      final token = await _getBotToken();
+      if (token == null) {
+        return {'success': false, 'error': 'Bot token not available'};
+      }
+
       final text = message != null ? '$message\n$link' : link;
+      final baseUrl = 'https://api.telegram.org/bot$token';
 
       final response = await http.post(
-        Uri.parse('$_baseUrl/sendMessage'),
+        Uri.parse('$baseUrl/sendMessage'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'chat_id': chatId,
@@ -73,8 +98,15 @@ class TelegramBotService {
     String? message,
   }) async {
     try {
+      final token = await _getBotToken();
+      if (token == null) {
+        return {'success': false, 'error': 'Bot token not available'};
+      }
+
+      final baseUrl = 'https://api.telegram.org/bot$token';
+
       final response = await http.post(
-        Uri.parse('$_baseUrl/sendMessage'),
+        Uri.parse('$baseUrl/sendMessage'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'chat_id': chatId,
