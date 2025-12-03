@@ -96,6 +96,10 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
         onPressed: () => _showExpenseDialog(),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        hoverElevation: 0,
+        highlightElevation: 0,
+        splashColor: Colors.transparent,
+
         label: const Row(
           children: [
             Text(
