@@ -281,7 +281,7 @@ class _SplitExpensesDialogState extends State<SplitExpensesDialog> {
                   Text(
                     title,
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 11,
                       fontWeight: FontWeight.w600,
                       color: isSelected
                           ? primaryColor
@@ -292,7 +292,7 @@ class _SplitExpensesDialogState extends State<SplitExpensesDialog> {
                   Text(
                     subtitle,
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 9,
                       color: isSelected
                           ? primaryColor.withOpacity(0.7)
                           : const Color(0xFF9E9E9E),
