@@ -24,12 +24,9 @@ class ConfigService {
         _cachedBotToken = data['token'] as String?;
         _cachedBotUsername = data['botUsername'] as String?;
         return _cachedBotToken;
-      } else {
-        print('Error getting bot token: ${response.statusCode}');
-        return null;
       }
+      return null;
     } catch (e) {
-      print('Error fetching bot token: $e');
       return null;
     }
   }

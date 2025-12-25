@@ -1,12 +1,15 @@
+import 'package:divvy/core/services/bot_telegram_service.dart';
+import 'package:divvy/core/services/firebase_service.dart';
+import 'package:divvy/core/services/group_expense_service.dart';
+import 'package:divvy/core/services/telegram_service.dart';
+import 'package:divvy/core/theme/constants/color.dart';
+import 'package:divvy/core/widgets/card_decoration.dart';
+import 'package:divvy/core/widgets/confirm_dialog.dart';
+import 'package:divvy/core/widgets/snack_bar_helper.dart';
+import 'package:divvy/feature/expense_dialog.dart';
 import 'package:divvy/feature/split_expense_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-
-import 'package:divvy/core/services/bot_telegram_service.dart';
-import 'package:divvy/core/services/firebase_service.dart';
-import 'package:divvy/core/services/telegram_service.dart';
-import 'package:divvy/core/theme/constants/color.dart';
-import 'package:divvy/feature/expense_dialog.dart';
 
 class GroupDetailsScreen extends StatefulWidget {
   final String groupId;
@@ -30,6 +33,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
   final FirebaseService _firebaseService = FirebaseService();
   final TelegramService _telegramService = TelegramService();
   final TelegramBotService _botService = TelegramBotService();
+  final GroupExpenseService _expenseService = GroupExpenseService();
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +52,6 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
     );
   }
 
-  // ==================== AppBar ====================
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
       elevation: 0,
@@ -76,7 +79,6 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
     );
   }
 
-  // ==================== FAB ====================
   Widget _buildFAB() {
     return Container(
       decoration: BoxDecoration(
@@ -117,7 +119,6 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
     );
   }
 
-  // ==================== Group Info Card ====================
   Widget _buildGroupInfo() {
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: _firebaseService.getGroupMembers(widget.groupId),
@@ -128,14 +129,14 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
             final expenses = expensesSnapshot.data ?? [];
             final members = membersSnapshot.data ?? [];
 
-            final totalAmount = _calculateTotalAmount(expenses);
+            final totalAmount = _expenseService.calculateTotalAmount(expenses);
             final expensesCount = expenses.length;
             final membersCount = members.length;
 
             return Container(
               margin: const EdgeInsets.all(16),
               padding: const EdgeInsets.all(24),
-              decoration: _cardDecoration(),
+              decoration: cardDecoration(),
               child: Column(
                 children: [
                   _buildTotalAmountRow(totalAmount),
@@ -167,14 +168,6 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
         );
       },
     );
-  }
-
-  double _calculateTotalAmount(List<Map<String, dynamic>> expenses) {
-    return expenses.fold<double>(0, (sum, expense) {
-      final amountStr = expense['amount']?.toString() ?? '0';
-      final amount = double.tryParse(amountStr) ?? 0;
-      return sum + amount;
-    });
   }
 
   Widget _buildTotalAmountRow(double totalAmount) {
@@ -261,13 +254,12 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
     );
   }
 
-  // ==================== Expenses List ====================
   Widget _buildExpensesList() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
       constraints: const BoxConstraints(minHeight: 300),
-      decoration: _cardDecoration(),
+      decoration: cardDecoration(),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -450,7 +442,6 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
     );
   }
 
-  // ==================== Dialogs ====================
   void _showExpenseDialog({Map<String, dynamic>? expense}) {
     final isEditing = expense != null;
     final nameController = TextEditingController(text: expense?['name'] ?? '');
@@ -560,30 +551,45 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
   // ==================== Business Logic ====================
   Future<void> _createExpense(String name, double amount) async {
     try {
-      await _firebaseService.createExpenses(
+      await _expenseService.createExpense(
         name: name,
-        id: widget.expensesId,
-        expense: widget.expensesName,
-        amount: amount.toString(),
+        amount: amount,
+        expensesId: widget.expensesId,
+        expensesName: widget.expensesName,
       );
 
-      _showSuccessSnackBar('Расход "$name" на сумму $amount ₽ добавлен');
+      if (mounted) {
+        SnackBarHelper.showSuccess(
+          context,
+          'Расход "$name" на сумму $amount ₽ добавлен',
+        );
+      }
     } catch (e) {
-      _showErrorSnackBar('Ошибка: $e');
+      if (mounted) {
+        SnackBarHelper.showError(context, 'Ошибка: $e');
+      }
     }
   }
 
   Future<void> _updateExpense(String id, String name, double amount) async {
     try {
-      await _firebaseService.updateExpenses(id, name, amount);
-      _showSuccessSnackBar('Расход "$name" на сумму $amount ₽ обновлен');
+      await _expenseService.updateExpense(id: id, name: name, amount: amount);
+      if (mounted) {
+        SnackBarHelper.showSuccess(
+          context,
+          'Расход "$name" на сумму $amount ₽ обновлен',
+        );
+      }
     } catch (e) {
-      _showErrorSnackBar('Ошибка: $e');
+      if (mounted) {
+        SnackBarHelper.showError(context, 'Ошибка: $e');
+      }
     }
   }
 
   Future<void> _deleteExpense(Map<String, dynamic> expense) async {
-    final confirm = await _showConfirmDialog(
+    final confirm = await showConfirmDialog(
+      context: context,
       title: 'Удалить расход?',
       content:
           'Вы уверены, что хотите удалить "${expense['name'] ?? 'расход'}"?',
@@ -592,10 +598,14 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
     if (confirm != true) return;
 
     try {
-      await _firebaseService.deleteExpenses(expense['id'] as String);
-      _showSuccessSnackBar('Расход удален');
+      await _expenseService.deleteExpense(expense['id'] as String);
+      if (mounted) {
+        SnackBarHelper.showSuccess(context, 'Расход удален');
+      }
     } catch (e) {
-      _showErrorSnackBar('Ошибка удаления: $e');
+      if (mounted) {
+        SnackBarHelper.showError(context, 'Ошибка удаления: $e');
+      }
     }
   }
 
@@ -623,7 +633,9 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
         }
       }
     } catch (e) {
-      _showErrorSnackBar('Ошибка при приглашении: $e');
+      if (mounted) {
+        SnackBarHelper.showError(context, 'Ошибка при приглашении: $e');
+      }
     }
   }
 
@@ -633,7 +645,9 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
         .first;
 
     if (members.isEmpty) {
-      _showErrorSnackBar('В группе нет участников');
+      if (mounted) {
+        SnackBarHelper.showError(context, 'В группе нет участников');
+      }
       return;
     }
 
@@ -642,11 +656,13 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
         .first;
 
     if (expenses.isEmpty) {
-      _showErrorSnackBar('Нет расходов для разделения');
+      if (mounted) {
+        SnackBarHelper.showError(context, 'Нет расходов для разделения');
+      }
       return;
     }
 
-    final totalAmount = _calculateTotalAmount(expenses);
+    final totalAmount = _expenseService.calculateTotalAmount(expenses);
 
     if (!mounted) return;
 
@@ -660,180 +676,33 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
     );
 
     if (debts != null && debts.isNotEmpty && mounted) {
-      await _sendDebtNotifications(debts, members);
-    }
-  }
-
-  Future<void> _sendDebtNotifications(
-    List<Map<String, dynamic>> debts,
-    List<Map<String, dynamic>> members,
-  ) async {
-    try {
-      final groupData = await _firebaseService.getGroupById(widget.groupId);
-      if (groupData == null) {
-        _showErrorSnackBar('Не удалось получить информацию о группе');
-        return;
-      }
-
-      final ownerId = groupData['ownerId'] as String?;
-      if (ownerId == null) {
-        _showErrorSnackBar('Не удалось определить создателя группы');
-        return;
-      }
-
-      // Находим создателя в списке участников
-      final owner = members.firstWhere(
-        (m) => m['userId'] == ownerId || m['id'] == ownerId,
-        orElse: () => {},
-      );
-
-      final ownerName = owner['firstName'] ?? 'Создателю группы';
-
-      int successCount = 0;
-      int failCount = 0;
-
-      // Отправляем уведомления каждому участнику
-      for (final debt in debts) {
-        final memberId = debt['memberId'] as String;
-        final amount = debt['amount'] as double;
-
-        // Пропускаем создателя группы (ему не нужно отправлять уведомление)
-        final member = members.firstWhere(
-          (m) => m['id'] == memberId,
-          orElse: () => {},
+      try {
+        final result = await _expenseService.sendDebtNotifications(
+          groupId: widget.groupId,
+          groupName: widget.groupName,
+          debts: debts,
+          members: members,
         );
 
-        if (member['userId'] == ownerId || member['id'] == ownerId) {
-          continue;
+        if (mounted) {
+          if (result['success']! > 0) {
+            SnackBarHelper.showSuccess(
+              context,
+              'Уведомления отправлены ${result['success']} участникам',
+            );
+          }
+          if (result['failed']! > 0) {
+            SnackBarHelper.showError(
+              context,
+              'Не удалось отправить ${result['failed']} уведомлений',
+            );
+          }
         }
-
-        final userId = member['userId'] as String?;
-        if (userId == null) {
-          failCount++;
-          continue;
+      } catch (e) {
+        if (mounted) {
+          SnackBarHelper.showError(context, 'Ошибка отправки уведомлений: $e');
         }
-
-        final message =
-            '''
-💰 <b>Разделение расходов</b>
-
-Группа: <b>${widget.groupName}</b>
-
-Вам нужно перевести <b>${amount.toStringAsFixed(0)} ₽</b> $ownerName.
-
-Спасибо! 🙏''';
-
-        final result = await _botService.sendLink(
-          chatId: userId,
-          link: '',
-          message: message,
-        );
-
-        if (result['success'] == true) {
-          successCount++;
-        } else {
-          failCount++;
-        }
-      }
-
-      if (mounted) {
-        if (successCount > 0) {
-          _showSuccessSnackBar(
-            'Уведомления отправлены $successCount участникам',
-          );
-        }
-        if (failCount > 0) {
-          _showErrorSnackBar('Не удалось отправить $failCount уведомлений');
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        _showErrorSnackBar('Ошибка отправки уведомлений: $e');
       }
     }
-  }
-
-  // ==================== Utilities ====================
-  Future<bool?> _showConfirmDialog({
-    required String title,
-    required String content,
-  }) {
-    return showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(content),
-        backgroundColor: backgroundColor,
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text(
-              'Отмена',
-              style: TextStyle(color: Color(0xFF9E9E9E)),
-            ),
-          ),
-          Container(
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [primaryColor, Color(0xFF8B7FFF)],
-              ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text(
-                'Удалить',
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showSuccessSnackBar(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: secondaryColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-  }
-
-  void _showErrorSnackBar(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: accentColor,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-  }
-
-  BoxDecoration _cardDecoration() {
-    return BoxDecoration(
-      color: cardColor,
-      borderRadius: BorderRadius.circular(20),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.05),
-          blurRadius: 10,
-          offset: const Offset(0, 4),
-        ),
-      ],
-    );
   }
 }

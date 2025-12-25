@@ -30,12 +30,8 @@ class FirebaseService {
               };
             }).toList();
           })
-          .handleError((error) {
-            print('Error getting groups: $error');
-            return <Map<String, dynamic>>[];
-          });
+          .handleError((error) => <Map<String, dynamic>>[]);
     } catch (e) {
-      print('Error in getGroups: $e');
       return Stream.value(<Map<String, dynamic>>[]);
     }
   }
@@ -57,10 +53,8 @@ class FirebaseService {
         'member': {'firstName': firstName, 'username': username},
       });
 
-      print('Group created successfully: $name with ID: ${docRef.id}');
       return docRef.id;
     } catch (e) {
-      print('Error creating group: $e');
       throw Exception('Ошибка при создании группы: $e');
     }
   }
@@ -81,9 +75,7 @@ class FirebaseService {
       }
 
       await batch.commit();
-      print('Group deleted successfully: $groupId');
     } catch (e) {
-      print('Error deleting group: $e');
       throw Exception('Ошибка при удалении группы: $e');
     }
   }
@@ -103,9 +95,7 @@ class FirebaseService {
         if (doc.id == groupId) continue;
         await doc.reference.update({'name': newName});
       }
-      print('Group updated successfully: $groupId');
     } catch (e) {
-      print('Error updating group: $e');
       throw Exception('Ошибка при обновлении группы: $e');
     }
   }
@@ -134,7 +124,6 @@ class FirebaseService {
         'member': data['member'],
       };
     } catch (e) {
-      print('Error getting group by id: $e');
       return null;
     }
   }
@@ -164,12 +153,8 @@ class FirebaseService {
               };
             }).toList();
           })
-          .handleError((error) {
-            print('Error getting group members: $error');
-            return <Map<String, dynamic>>[];
-          });
+          .handleError((error) => <Map<String, dynamic>>[]);
     } catch (e) {
-      print('Error in getGroupMembers: $e');
       return Stream.value(<Map<String, dynamic>>[]);
     }
   }
@@ -219,7 +204,6 @@ class FirebaseService {
 
       return true;
     } catch (e) {
-      print('Error linking user to group: $e');
       return false;
     }
   }
@@ -249,12 +233,8 @@ class FirebaseService {
             });
             return expenses;
           })
-          .handleError((error) {
-            print('Error getting expenses: $error');
-            return <Map<String, dynamic>>[];
-          });
+          .handleError((error) => <Map<String, dynamic>>[]);
     } catch (e) {
-      print('Error in getExpenses: $e');
       return Stream.value(<Map<String, dynamic>>[]);
     }
   }
@@ -273,22 +253,16 @@ class FirebaseService {
         'id': id,
       });
 
-      print('Expense created successfully: $name with ID: ${docRef.id}');
       return docRef.id;
     } catch (e) {
-      print('Error creating expense: $e');
-      throw Exception('Ошибка при добавлени расхода: $e');
+      throw Exception('Ошибка при добавлении расхода: $e');
     }
   }
 
   Future<void> deleteExpenses(String id) async {
     try {
-      _firestore.collection(_expensesCollection).doc(id);
-
       await _firestore.collection(_expensesCollection).doc(id).delete();
-      print('Expense deleted successfully: $id');
     } catch (e) {
-      print('Error deleting expense: $e');
       throw Exception('Ошибка при удалении расхода: $e');
     }
   }
@@ -303,9 +277,7 @@ class FirebaseService {
         'name': newName,
         'amount': newAmount,
       });
-      print('Expense updated successfully: $id');
     } catch (e) {
-      print('Error updating expense: $e');
       throw Exception('Ошибка при обновлении расхода: $e');
     }
   }

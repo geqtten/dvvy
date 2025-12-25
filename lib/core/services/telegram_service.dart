@@ -17,17 +17,9 @@ class TelegramService {
 
           webApp.callMethod('expand', []);
           _initData = _parseInitData(webApp);
-
-          print('Telegram WebApp initialized');
-          print('User ID: ${getUserId()}');
-          print('Username: @${getUsername()}');
         }
-      } else {
-        print('Telegram WebApp API not available (running in browser)');
       }
-    } catch (e) {
-      print('Error initializing Telegram WebApp: $e');
-    }
+    } catch (e) {}
   }
 
   Map<String, dynamic> _parseInitData(dynamic webApp) {
@@ -48,9 +40,7 @@ class TelegramService {
           };
         }
       }
-    } catch (e) {
-      print('Error parsing init data: $e');
-    }
+    } catch (e) {}
     return {};
   }
 
@@ -81,7 +71,6 @@ class TelegramService {
       webApp.callMethod('openTelegramLink', [url]);
       return true;
     } catch (e) {
-      print('Error opening Telegram link: $e');
       return false;
     }
   }
@@ -91,9 +80,7 @@ class TelegramService {
       final telegram = js.context['Telegram'];
       final webApp = telegram['WebApp'];
       webApp.callMethod('close', []);
-    } catch (e) {
-      print('Error closing WebApp: $e');
-    }
+    } catch (e) {}
   }
 
   void showMainButton(String text, Function() onClick) {
@@ -105,9 +92,7 @@ class TelegramService {
       mainButton.callMethod('setText', [text]);
       mainButton.callMethod('show', []);
       mainButton.callMethod('onClick', [js.allowInterop(onClick)]);
-    } catch (e) {
-      print('Error showing main button: $e');
-    }
+    } catch (e) {}
   }
 
   Future<List<Map<String, dynamic>>> getContacts() async {

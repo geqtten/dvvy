@@ -1,8 +1,10 @@
+import 'package:divvy/core/services/firebase_service.dart';
 import 'package:divvy/core/services/telegram_service.dart';
 import 'package:divvy/core/theme/constants/color.dart';
+import 'package:divvy/core/widgets/confirm_dialog.dart';
+import 'package:divvy/core/widgets/snack_bar_helper.dart';
 import 'package:divvy/feature/screen/group_details_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:divvy/core/services/firebase_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -39,16 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final group = await _firebaseService.getGroupById(groupId);
     if (!mounted || group == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Группа недоступна или удалена'),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: accentColor,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
+        SnackBarHelper.showError(context, 'Группа недоступна или удалена');
       }
       return;
     }
@@ -65,16 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     if (!joined && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Не удалось добавить вас в группу'),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: accentColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-      );
+      SnackBarHelper.showError(context, 'Не удалось добавить вас в группу');
     }
 
     if (!mounted) return;
@@ -306,7 +290,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _showCreateGroupDialog() {
     final nameController = TextEditingController();
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
 
     showDialog(
       context: context,
@@ -397,27 +380,16 @@ class _HomeScreenState extends State<HomeScreen> {
                         firstName: telegram.getFirstName() ?? 'Test',
                       );
 
-                      scaffoldMessenger.showSnackBar(
-                        SnackBar(
-                          content: Text('Группа "$groupName" создана'),
-                          behavior: SnackBarBehavior.floating,
-                          backgroundColor: secondaryColor,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      );
+                      if (mounted) {
+                        SnackBarHelper.showSuccess(
+                          context,
+                          'Группа "$groupName" создана',
+                        );
+                      }
                     } catch (e) {
-                      scaffoldMessenger.showSnackBar(
-                        SnackBar(
-                          content: Text('Ошибка: $e'),
-                          backgroundColor: accentColor,
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      );
+                      if (mounted) {
+                        SnackBarHelper.showError(context, 'Ошибка: $e');
+                      }
                     }
                   }
                 },
@@ -444,7 +416,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _editGroup(String groupId, String currentName) async {
     final nameController = TextEditingController(text: currentName);
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
 
     final result =
         await showDialog(
@@ -557,96 +528,34 @@ class _HomeScreenState extends State<HomeScreen> {
     if (result != null && result != currentName) {
       try {
         await _firebaseService.updateGroup(groupId, result);
-        scaffoldMessenger.showSnackBar(
-          SnackBar(
-            content: Text('Группа "$result" обновлена'),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: secondaryColor,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
+        if (mounted) {
+          SnackBarHelper.showSuccess(context, 'Группа "$result" обновлена');
+        }
       } catch (e) {
-        scaffoldMessenger.showSnackBar(
-          SnackBar(
-            content: Text('Ошибка обновления: $e'),
-            backgroundColor: accentColor,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
+        if (mounted) {
+          SnackBarHelper.showError(context, 'Ошибка обновления: $e');
+        }
       }
     }
   }
 
   Future<void> _deleteGroup(String groupId) async {
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-
-    final confirm = await showDialog<bool>(
+    final confirm = await showConfirmDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: cardColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-        title: const Text(
-          'Удалить группу?',
-          style: TextStyle(
-            color: Color(0xFF2D3142),
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        content: const Text(
-          'Это действие нельзя отменить',
-          style: TextStyle(color: Color(0xFF9E9E9E)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text(
-              'Отмена',
-              style: TextStyle(color: Color(0xFF9E9E9E)),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: accentColor,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text('Удалить', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
+      title: 'Удалить группу?',
+      content: 'Это действие нельзя отменить',
     );
 
     if (confirm == true) {
       try {
         await _firebaseService.deleteGroup(groupId);
-        scaffoldMessenger.showSnackBar(
-          SnackBar(
-            content: const Text('Группа удалена'),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: secondaryColor,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
+        if (mounted) {
+          SnackBarHelper.showSuccess(context, 'Группа удалена');
+        }
       } catch (e) {
-        scaffoldMessenger.showSnackBar(
-          SnackBar(
-            content: Text('Ошибка удаления: $e'),
-            backgroundColor: accentColor,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
+        if (mounted) {
+          SnackBarHelper.showError(context, 'Ошибка удаления: $e');
+        }
       }
     }
   }
