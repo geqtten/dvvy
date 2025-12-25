@@ -43,22 +43,6 @@ class ConfigService {
     return _cachedBotUsername;
   }
 
-  Future<Map<String, dynamic>?> getFirebaseConfig() async {
-    try {
-      final response = await http.get(Uri.parse('$_baseUrl/getFirebaseConfig'));
-
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body) as Map<String, dynamic>;
-      } else {
-        print('Error getting Firebase config: ${response.statusCode}');
-        return null;
-      }
-    } catch (e) {
-      print('Error fetching Firebase config: $e');
-      return null;
-    }
-  }
-
   void clearCache() {
     _cachedBotToken = null;
     _cachedBotUsername = null;

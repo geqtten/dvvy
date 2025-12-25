@@ -4,25 +4,15 @@ import 'package:divvy/core/services/config_service.dart';
 
 class TelegramBotService {
   final ConfigService _configService = ConfigService();
-  String? _cachedBotToken;
-  String? _cachedBotUsername;
 
   Future<String?> _getBotToken() async {
-    if (_cachedBotToken != null) {
-      return _cachedBotToken;
-    }
-    _cachedBotToken = await _configService.getBotToken();
-    return _cachedBotToken;
+    return await _configService.getBotToken();
   }
 
   Future<String?> _getBotUsername() async {
-    if (_cachedBotUsername != null) {
-      return _cachedBotUsername;
-    }
-
-    _cachedBotUsername = await _configService.getBotUsername();
-    if (_cachedBotUsername != null) {
-      return _cachedBotUsername;
+    final username = await _configService.getBotUsername();
+    if (username != null) {
+      return username;
     }
 
     final token = await _getBotToken();
@@ -37,13 +27,36 @@ class TelegramBotService {
       final result = jsonDecode(response.body);
 
       if (result['ok'] == true) {
-        _cachedBotUsername = result['result']['username'];
-        return _cachedBotUsername;
+        return result['result']['username'];
       }
     } catch (e) {
       return null;
     }
     return null;
+  }
+
+  Future<Map<String, dynamic>> _sendTelegramRequest({
+    required String token,
+    required Map<String, dynamic> body,
+  }) async {
+    try {
+      final baseUrl = 'https://api.telegram.org/bot$token';
+      final response = await http.post(
+        Uri.parse('$baseUrl/sendMessage'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      );
+
+      final result = jsonDecode(response.body);
+
+      if (result['ok'] == true) {
+        return {'success': true, 'messageId': result['result']['message_id']};
+      } else {
+        throw Exception(result['description'] ?? 'Ошибка отправки');
+      }
+    } catch (e) {
+      return {'success': false, 'error': e.toString()};
+    }
   }
 
   Future<String?> buildInviteLink({required String groupId}) async {
@@ -59,36 +72,21 @@ class TelegramBotService {
     required String link,
     String? message,
   }) async {
-    try {
-      final token = await _getBotToken();
-      if (token == null) {
-        return {'success': false, 'error': 'Bot token not available'};
-      }
-
-      final text = message != null ? '$message\n$link' : link;
-      final baseUrl = 'https://api.telegram.org/bot$token';
-
-      final response = await http.post(
-        Uri.parse('$baseUrl/sendMessage'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'chat_id': chatId,
-          'text': text,
-          'parse_mode': 'HTML',
-          'disable_web_page_preview': false,
-        }),
-      );
-
-      final result = jsonDecode(response.body);
-
-      if (result['ok'] == true) {
-        return {'success': true, 'messageId': result['result']['message_id']};
-      } else {
-        throw Exception(result['description'] ?? 'Ошибка отправки');
-      }
-    } catch (e) {
-      return {'success': false, 'error': e.toString()};
+    final token = await _getBotToken();
+    if (token == null) {
+      return {'success': false, 'error': 'Bot token not available'};
     }
+
+    final text = message != null ? '$message\n$link' : link;
+    return await _sendTelegramRequest(
+      token: token,
+      body: {
+        'chat_id': chatId,
+        'text': text,
+        'parse_mode': 'HTML',
+        'disable_web_page_preview': false,
+      },
+    );
   }
 
   Future<Map<String, dynamic>> sendLinkWithButton({
@@ -97,67 +95,24 @@ class TelegramBotService {
     required String buttonText,
     String? message,
   }) async {
-    try {
-      final token = await _getBotToken();
-      if (token == null) {
-        return {'success': false, 'error': 'Bot token not available'};
-      }
+    final token = await _getBotToken();
+    if (token == null) {
+      return {'success': false, 'error': 'Bot token not available'};
+    }
 
-      final baseUrl = 'https://api.telegram.org/bot$token';
-
-      final response = await http.post(
-        Uri.parse('$baseUrl/sendMessage'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'chat_id': chatId,
-          'text': message ?? 'Нажмите на кнопку:',
-          'reply_markup': {
-            'inline_keyboard': [
-              [
-                {'text': buttonText, 'url': link},
-              ],
+    return await _sendTelegramRequest(
+      token: token,
+      body: {
+        'chat_id': chatId,
+        'text': message ?? 'Нажмите на кнопку:',
+        'reply_markup': {
+          'inline_keyboard': [
+            [
+              {'text': buttonText, 'url': link},
             ],
-          },
-        }),
-      );
-
-      final result = jsonDecode(response.body);
-
-      if (result['ok'] == true) {
-        return {'success': true, 'messageId': result['result']['message_id']};
-      } else {
-        throw Exception(result['description'] ?? 'Ошибка отправки');
-      }
-    } catch (e) {
-      return {'success': false, 'error': e.toString()};
-    }
-  }
-}
-
-class LinkSharingService {
-  final String backendUrl;
-
-  LinkSharingService({required this.backendUrl});
-
-  Future<Map<String, dynamic>> sendLinkViaBackend({
-    required String userId,
-    required String link,
-    String? message,
-  }) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$backendUrl/send-link'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'userId': userId, 'link': link, 'message': message}),
-      );
-
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        throw Exception('Ошибка сервера: ${response.statusCode}');
-      }
-    } catch (e) {
-      return {'success': false, 'error': e.toString()};
-    }
+          ],
+        },
+      },
+    );
   }
 }
