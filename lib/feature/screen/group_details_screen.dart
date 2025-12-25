@@ -650,7 +650,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
 
     if (!mounted) return;
 
-    await showDialog<List<Map<String, dynamic>>>(
+    final debts = await showDialog<List<Map<String, dynamic>>>(
       context: context,
       builder: (context) => SplitExpensesDialog(
         members: members,
@@ -658,6 +658,99 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
         groupName: widget.groupName,
       ),
     );
+
+    if (debts != null && debts.isNotEmpty && mounted) {
+      await _sendDebtNotifications(debts, members);
+    }
+  }
+
+  Future<void> _sendDebtNotifications(
+    List<Map<String, dynamic>> debts,
+    List<Map<String, dynamic>> members,
+  ) async {
+    try {
+      final groupData = await _firebaseService.getGroupById(widget.groupId);
+      if (groupData == null) {
+        _showErrorSnackBar('Не удалось получить информацию о группе');
+        return;
+      }
+
+      final ownerId = groupData['ownerId'] as String?;
+      if (ownerId == null) {
+        _showErrorSnackBar('Не удалось определить создателя группы');
+        return;
+      }
+
+      // Находим создателя в списке участников
+      final owner = members.firstWhere(
+        (m) => m['userId'] == ownerId || m['id'] == ownerId,
+        orElse: () => {},
+      );
+
+      final ownerName = owner['firstName'] ?? 'Создателю группы';
+
+      int successCount = 0;
+      int failCount = 0;
+
+      // Отправляем уведомления каждому участнику
+      for (final debt in debts) {
+        final memberId = debt['memberId'] as String;
+        final amount = debt['amount'] as double;
+
+        // Пропускаем создателя группы (ему не нужно отправлять уведомление)
+        final member = members.firstWhere(
+          (m) => m['id'] == memberId,
+          orElse: () => {},
+        );
+
+        if (member['userId'] == ownerId || member['id'] == ownerId) {
+          continue;
+        }
+
+        final userId = member['userId'] as String?;
+        if (userId == null) {
+          failCount++;
+          continue;
+        }
+
+        final message =
+            '''
+💰 <b>Разделение расходов</b>
+
+Группа: <b>${widget.groupName}</b>
+
+Вам нужно перевести <b>${amount.toStringAsFixed(0)} ₽</b> $ownerName.
+
+Спасибо! 🙏''';
+
+        final result = await _botService.sendLink(
+          chatId: userId,
+          link: '',
+          message: message,
+        );
+
+        if (result['success'] == true) {
+          successCount++;
+        } else {
+          failCount++;
+        }
+      }
+
+      if (mounted) {
+        if (successCount > 0) {
+          _showSuccessSnackBar(
+            'Уведомления отправлены $successCount участникам',
+          );
+        }
+        if (failCount > 0) {
+          _showErrorSnackBar('Не удалось отправить $failCount уведомлений');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        _showErrorSnackBar('Ошибка отправки уведомлений: $e');
+      }
+    }
   }
 
   // ==================== Utilities ====================
